@@ -17,6 +17,23 @@ class HandballSoundboard {
         this.updateVolumeDisplay();
         this.updateFileCountDisplays();
         this.updateStatusDisplay();
+        
+        // Cleanup alte URLs beim Schließen der App
+        window.addEventListener('beforeunload', () => {
+            this.cleanupBlobUrls();
+        });
+    }
+
+    cleanupBlobUrls() {
+        // Räume alle Blob-URLs auf, um Memory-Leaks zu vermeiden
+        for (const [soundType, sounds] of Object.entries(this.customSounds)) {
+            sounds.forEach(sound => {
+                if (sound.url && sound.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(sound.url);
+                }
+            });
+        }
+        console.log('Cleaned up blob URLs');
     }
 
     initializeSounds() {
@@ -77,14 +94,12 @@ class HandballSoundboard {
 
                 savedSounds.forEach(soundData => {
                     try {
-                        const blob = new Blob([soundData.fileData], { type: 'audio/mpeg' });
-                        const url = URL.createObjectURL(blob);
-
+                        // Speichere die rohen Daten statt Blob-URLs
                         if (this.customSounds[soundData.soundType]) {
                             this.customSounds[soundData.soundType].push({
                                 name: soundData.name,
-                                url: url,
-                                file: new File([blob], soundData.name + '.mp3', { type: 'audio/mpeg' })
+                                fileData: soundData.fileData, // Speichere ArrayBuffer direkt
+                                url: null // URL wird bei Bedarf erstellt
                             });
 
                             console.log(`Restored sound: ${soundData.name} for ${soundData.soundType}`);
@@ -96,6 +111,7 @@ class HandballSoundboard {
 
                 // Update UI after loading
                 this.updateFileCountDisplays();
+                this.updateStatusDisplay();
                 console.log('All sounds loaded successfully');
             };
 
@@ -129,7 +145,18 @@ class HandballSoundboard {
                 for (let i = 0; i < sounds.length; i++) {
                     const sound = sounds[i];
                     try {
-                        const arrayBuffer = await sound.file.arrayBuffer();
+                        let arrayBuffer;
+                        
+                        if (sound.fileData) {
+                            // Bereits gespeicherte Daten verwenden
+                            arrayBuffer = sound.fileData;
+                        } else if (sound.file) {
+                            // Neue Datei verarbeiten
+                            arrayBuffer = await sound.file.arrayBuffer();
+                        } else {
+                            console.warn('Sound has neither fileData nor file:', sound.name);
+                            continue;
+                        }
 
                         allSoundData.push({
                             id: `${soundType}_${i}_${Date.now()}_${Math.random()}`,
@@ -319,7 +346,27 @@ class HandballSoundboard {
         const customSounds = this.customSounds[soundType];
         const randomSound = customSounds[Math.floor(Math.random() * customSounds.length)];
 
-        const audio = new Audio(randomSound.url);
+        // Erstelle URL bei Bedarf aus gespeicherten Daten
+        let audioUrl = randomSound.url;
+        if (!audioUrl && randomSound.fileData) {
+            // Erstelle neue Blob-URL aus gespeicherten ArrayBuffer-Daten
+            const blob = new Blob([randomSound.fileData], { type: 'audio/mpeg' });
+            audioUrl = URL.createObjectURL(blob);
+            randomSound.url = audioUrl; // Cache die URL für weitere Verwendung
+            console.log('Created new blob URL for:', randomSound.name);
+        } else if (!audioUrl && randomSound.file) {
+            // Fallback für direkt hochgeladene Dateien
+            audioUrl = URL.createObjectURL(randomSound.file);
+            randomSound.url = audioUrl;
+            console.log('Created blob URL from file for:', randomSound.name);
+        }
+
+        if (!audioUrl) {
+            console.error('No audio URL available for sound:', randomSound.name);
+            return;
+        }
+
+        const audio = new Audio(audioUrl);
         console.log('Playing custom sound:', soundType, 'file:', randomSound.name);
         console.log('Setting audio volume to:', this.volume);
         audio.volume = this.volume;
@@ -337,7 +384,14 @@ class HandballSoundboard {
             console.log('Audio loaded, volume set to:', audio.volume);
         });
 
-        audio.play().catch(e => console.log('Audio play failed:', e));
+        audio.play().catch(e => {
+            console.error('Audio play failed:', e);
+            // Entferne aus currentlyPlaying wenn Playback fehlschlägt
+            this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
+            buttonElement.classList.remove('playing');
+            this.restoreButtonText(buttonElement);
+            this.updateStatusDisplay();
+        });
 
         audio.onended = () => {
             console.log('Audio ended naturally:', randomSound.name);
