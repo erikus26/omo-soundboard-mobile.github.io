@@ -17,7 +17,10 @@ class HandballSoundboard {
         this.updateVolumeDisplay();
         this.updateFileCountDisplays();
         this.updateStatusDisplay();
-        
+
+        // Debug: Teste alle Sound-Definitionen
+        this.debugSoundSystem();
+
         // Cleanup alte URLs beim Schließen der App
         window.addEventListener('beforeunload', () => {
             this.cleanupBlobUrls();
@@ -34,6 +37,32 @@ class HandballSoundboard {
             });
         }
         console.log('Cleaned up blob URLs');
+    }
+
+    debugSoundSystem() {
+        console.log('=== SOUND SYSTEM DEBUG ===');
+        console.log('Sound definitions:', this.soundDefinitions);
+        console.log('Custom sounds:', this.customSounds);
+        console.log('Volume:', this.volume);
+
+        // Teste AudioContext
+        try {
+            const testContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('AudioContext test: SUCCESS', testContext.state);
+            testContext.close();
+        } catch (error) {
+            console.error('AudioContext test: FAILED', error);
+        }
+
+        // Teste Audio-Element
+        try {
+            const testAudio = new Audio();
+            console.log('Audio element test: SUCCESS');
+        } catch (error) {
+            console.error('Audio element test: FAILED', error);
+        }
+
+        console.log('=== END DEBUG ===');
     }
 
     initializeSounds() {
@@ -92,27 +121,39 @@ class HandballSoundboard {
                 const savedSounds = request.result;
                 console.log('Found saved sounds:', savedSounds.length, 'files');
 
+                let loadedCount = 0;
                 savedSounds.forEach(soundData => {
                     try {
-                        // Speichere die rohen Daten statt Blob-URLs
-                        if (this.customSounds[soundData.soundType]) {
-                            this.customSounds[soundData.soundType].push({
-                                name: soundData.name,
-                                fileData: soundData.fileData, // Speichere ArrayBuffer direkt
-                                url: null // URL wird bei Bedarf erstellt
-                            });
+                        console.log('Processing saved sound:', soundData.name, 'Type:', soundData.soundType);
+                        console.log('FileData type:', typeof soundData.fileData, 'Size:', soundData.fileData?.byteLength || 'unknown');
 
-                            console.log(`Restored sound: ${soundData.name} for ${soundData.soundType}`);
+                        if (this.customSounds[soundData.soundType] && soundData.fileData) {
+                            // Validiere ArrayBuffer
+                            if (soundData.fileData instanceof ArrayBuffer && soundData.fileData.byteLength > 0) {
+                                this.customSounds[soundData.soundType].push({
+                                    name: soundData.name,
+                                    fileData: soundData.fileData,
+                                    url: null
+                                });
+                                loadedCount++;
+                                console.log(`✅ Restored sound: ${soundData.name} for ${soundData.soundType}`);
+                            } else {
+                                console.error('❌ Invalid fileData for:', soundData.name);
+                            }
+                        } else {
+                            console.error('❌ Invalid sound type or missing fileData:', soundData.soundType, soundData.name);
                         }
                     } catch (error) {
-                        console.error('Error restoring sound:', soundData.name, error);
+                        console.error('❌ Error restoring sound:', soundData.name, error);
                     }
                 });
+
+                console.log(`Loaded ${loadedCount} of ${savedSounds.length} sounds successfully`);
 
                 // Update UI after loading
                 this.updateFileCountDisplays();
                 this.updateStatusDisplay();
-                console.log('All sounds loaded successfully');
+                console.log('Sound loading completed');
             };
 
             request.onerror = () => {
@@ -146,7 +187,7 @@ class HandballSoundboard {
                     const sound = sounds[i];
                     try {
                         let arrayBuffer;
-                        
+
                         if (sound.fileData) {
                             // Bereits gespeicherte Daten verwenden
                             arrayBuffer = sound.fileData;
@@ -287,7 +328,7 @@ class HandballSoundboard {
                 this.playSound(soundType, button);
             });
         });
-        
+
         // Store original button texts after all event listeners are set up
         // Use setTimeout to ensure DOM is fully ready
         setTimeout(() => {
@@ -342,150 +383,225 @@ class HandballSoundboard {
         }
     }
 
-    playCustomSound(soundType, buttonElement) {
+    async playCustomSound(soundType, buttonElement) {
+        console.log('playCustomSound called for:', soundType);
+
         const customSounds = this.customSounds[soundType];
-        const randomSound = customSounds[Math.floor(Math.random() * customSounds.length)];
-
-        // Erstelle URL bei Bedarf aus gespeicherten Daten
-        let audioUrl = randomSound.url;
-        if (!audioUrl && randomSound.fileData) {
-            // Erstelle neue Blob-URL aus gespeicherten ArrayBuffer-Daten
-            const blob = new Blob([randomSound.fileData], { type: 'audio/mpeg' });
-            audioUrl = URL.createObjectURL(blob);
-            randomSound.url = audioUrl; // Cache die URL für weitere Verwendung
-            console.log('Created new blob URL for:', randomSound.name);
-        } else if (!audioUrl && randomSound.file) {
-            // Fallback für direkt hochgeladene Dateien
-            audioUrl = URL.createObjectURL(randomSound.file);
-            randomSound.url = audioUrl;
-            console.log('Created blob URL from file for:', randomSound.name);
-        }
-
-        if (!audioUrl) {
-            console.error('No audio URL available for sound:', randomSound.name);
+        if (!customSounds || customSounds.length === 0) {
+            console.error('No custom sounds available for:', soundType);
             return;
         }
 
-        const audio = new Audio(audioUrl);
-        console.log('Playing custom sound:', soundType, 'file:', randomSound.name);
-        console.log('Setting audio volume to:', this.volume);
-        audio.volume = this.volume;
+        const randomSound = customSounds[Math.floor(Math.random() * customSounds.length)];
+        console.log('Selected sound:', randomSound);
 
-        this.addVisualFeedback(buttonElement, { text: randomSound.name });
+        try {
+            let audioUrl = null;
 
-        // Add to currently playing BEFORE starting playback
-        const soundEntry = { audio, button: buttonElement, soundType };
-        this.currentlyPlaying.push(soundEntry);
-        console.log('Added to currentlyPlaying, total sounds:', this.currentlyPlaying.length);
+            // Verschiedene Wege zur Audio-URL-Erstellung
+            if (randomSound.fileData) {
+                console.log('Creating blob from fileData for:', randomSound.name);
+                const blob = new Blob([randomSound.fileData], { type: 'audio/mpeg' });
+                audioUrl = URL.createObjectURL(blob);
+            } else if (randomSound.file) {
+                console.log('Creating blob from file for:', randomSound.name);
+                audioUrl = URL.createObjectURL(randomSound.file);
+            } else if (randomSound.url) {
+                console.log('Using existing URL for:', randomSound.name);
+                audioUrl = randomSound.url;
+            }
 
-        // Ensure volume is set after audio loads
-        audio.addEventListener('loadeddata', () => {
+            if (!audioUrl) {
+                console.error('Could not create audio URL for:', randomSound.name);
+                alert('Fehler beim Laden der Audio-Datei: ' + randomSound.name);
+                return;
+            }
+
+            console.log('Audio URL created:', audioUrl.substring(0, 50) + '...');
+
+            // Audio-Element erstellen und konfigurieren
+            const audio = new Audio();
+            audio.preload = 'auto';
             audio.volume = this.volume;
-            console.log('Audio loaded, volume set to:', audio.volume);
-        });
 
-        audio.play().catch(e => {
-            console.error('Audio play failed:', e);
-            // Entferne aus currentlyPlaying wenn Playback fehlschlägt
-            this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
-            buttonElement.classList.remove('playing');
-            this.restoreButtonText(buttonElement);
-            this.updateStatusDisplay();
-        });
+            // Event-Listener vor dem Setzen der src
+            audio.addEventListener('canplaythrough', () => {
+                console.log('Audio can play through:', randomSound.name);
+            });
 
-        audio.onended = () => {
-            console.log('Audio ended naturally:', randomSound.name);
-            this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
-            buttonElement.classList.remove('playing');
-            
-            // Restore button text when sound ends naturally
-            this.restoreButtonText(buttonElement);
-            
+            audio.addEventListener('error', (e) => {
+                console.error('Audio error for', randomSound.name, ':', e);
+                console.error('Audio error details:', audio.error);
+                this.handleAudioError(audio, buttonElement, randomSound.name);
+            });
+
+            audio.addEventListener('loadstart', () => {
+                console.log('Audio load started for:', randomSound.name);
+            });
+
+            audio.addEventListener('loadeddata', () => {
+                console.log('Audio data loaded for:', randomSound.name);
+            });
+
+            // Src setzen
+            audio.src = audioUrl;
+
+            this.addVisualFeedback(buttonElement, { text: randomSound.name });
+
+            // Add to currently playing
+            const soundEntry = { audio, button: buttonElement, soundType, url: audioUrl };
+            this.currentlyPlaying.push(soundEntry);
+
+            // Play-Versuch
+            console.log('Attempting to play audio for:', randomSound.name);
+
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('Audio playback started successfully for:', randomSound.name);
+                }).catch(error => {
+                    console.error('Play promise rejected for', randomSound.name, ':', error);
+                    this.handleAudioError(audio, buttonElement, randomSound.name);
+                });
+            }
+
+            // Ended event
+            audio.addEventListener('ended', () => {
+                console.log('Audio ended naturally:', randomSound.name);
+                this.cleanupAudioPlayback(audio, buttonElement, audioUrl);
+            });
+
             this.updateStatusDisplay();
-        };
+
+        } catch (error) {
+            console.error('Error in playCustomSound:', error);
+            alert('Fehler beim Abspielen: ' + error.message);
+        }
+    }
+
+    handleAudioError(audio, buttonElement, soundName) {
+        console.error('Handling audio error for:', soundName);
+        this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
+        buttonElement.classList.remove('playing');
+        this.restoreButtonText(buttonElement);
+        this.updateStatusDisplay();
+
+        // Zeige Benutzer-freundliche Fehlermeldung
+        alert('Fehler beim Abspielen von: ' + soundName + '\nBitte versuchen Sie es erneut oder laden Sie die Datei neu hoch.');
+    }
+
+    cleanupAudioPlayback(audio, buttonElement, audioUrl) {
+        // Cleanup nach Audio-Ende
+        this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
+        buttonElement.classList.remove('playing');
+        this.restoreButtonText(buttonElement);
+
+        // URL cleanup
+        if (audioUrl && audioUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(audioUrl);
+        }
 
         this.updateStatusDisplay();
     }
 
     playGeneratedSound(soundType, buttonElement) {
+        console.log('Playing generated sound for:', soundType);
         const variations = this.soundDefinitions[soundType];
         const randomSound = variations[Math.floor(Math.random() * variations.length)];
+        console.log('Selected generated sound config:', randomSound);
         this.createAndPlayAudio(randomSound, buttonElement);
     }
 
     createAndPlayAudio(soundConfig, buttonElement) {
-        if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        console.log('Creating and playing generated audio with config:', soundConfig);
 
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+        try {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('Created new AudioContext');
+            }
 
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+            // Resume AudioContext if suspended (required for mobile browsers)
+            if (this.audioContext.state === 'suspended') {
+                console.log('Resuming suspended AudioContext');
+                this.audioContext.resume();
+            }
 
-        oscillator.frequency.setValueAtTime(440 * soundConfig.pitch, this.audioContext.currentTime);
-        oscillator.type = 'sine';
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
 
-        console.log('Playing generated sound, setting volume to:', this.volume);
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
 
-        // Apply volume more effectively for generated sounds
-        const effectiveVolume = this.volume * 0.5; // Scale down a bit for generated sounds
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(effectiveVolume, this.audioContext.currentTime + 0.1);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + soundConfig.duration / 1000);
+            oscillator.frequency.setValueAtTime(440 * soundConfig.pitch, this.audioContext.currentTime);
+            oscillator.type = 'sine';
 
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + soundConfig.duration / 1000);
+            console.log('Generated sound config - Pitch:', soundConfig.pitch, 'Duration:', soundConfig.duration, 'Volume:', this.volume);
 
-        this.addVisualFeedback(buttonElement, soundConfig);
+            // Apply volume more effectively for generated sounds
+            const effectiveVolume = this.volume * 0.3; // Scale down for generated sounds
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(effectiveVolume, this.audioContext.currentTime + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + soundConfig.duration / 1000);
 
-        // Add to currently playing with sound type info
-        const soundType = buttonElement.dataset.sound;
-        const soundEntry = { oscillator, gainNode, button: buttonElement, soundType };
-        this.currentlyPlaying.push(soundEntry);
-        console.log('Added generated sound to currentlyPlaying, total sounds:', this.currentlyPlaying.length);
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + soundConfig.duration / 1000);
 
-        oscillator.onended = () => {
-            console.log('Generated sound ended naturally:', soundType);
-            this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.oscillator !== oscillator);
-            buttonElement.classList.remove('playing');
-            
-            // Restore button text when sound ends naturally
-            this.restoreButtonText(buttonElement);
-            
+            this.addVisualFeedback(buttonElement, soundConfig);
+
+            // Add to currently playing with sound type info
+            const soundType = buttonElement.dataset.sound;
+            const soundEntry = { oscillator, gainNode, button: buttonElement, soundType };
+            this.currentlyPlaying.push(soundEntry);
+            console.log('Added generated sound to currentlyPlaying, total sounds:', this.currentlyPlaying.length);
+
+            oscillator.onended = () => {
+                console.log('Generated sound ended naturally:', soundType);
+                this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.oscillator !== oscillator);
+                buttonElement.classList.remove('playing');
+
+                // Restore button text when sound ends naturally
+                this.restoreButtonText(buttonElement);
+
+                this.updateStatusDisplay();
+            };
+
             this.updateStatusDisplay();
-        };
+            console.log('Generated sound playback initiated successfully');
 
-        this.updateStatusDisplay();
+        } catch (error) {
+            console.error('Error creating/playing generated audio:', error);
+            alert('Fehler beim Abspielen des generierten Sounds: ' + error.message);
+        }
     }
     addVisualFeedback(buttonElement, soundConfig) {
         buttonElement.classList.add('playing');
 
         const textElement = buttonElement.querySelector('.text');
-        
+
         // Clear any existing timer for this button
         if (this.buttonTextTimers.has(buttonElement)) {
             clearTimeout(this.buttonTextTimers.get(buttonElement));
         }
-        
+
         // Set the new text
         const newText = soundConfig.text || soundConfig.name || this.originalButtonTexts.get(buttonElement);
         textElement.textContent = newText;
-        
+
         // Set a timer to restore original text (but don't rely on it exclusively)
         const timer = setTimeout(() => {
             this.restoreButtonText(buttonElement);
             this.buttonTextTimers.delete(buttonElement);
         }, 600);
-        
+
         this.buttonTextTimers.set(buttonElement, timer);
     }
 
     restoreButtonText(buttonElement) {
         const textElement = buttonElement.querySelector('.text');
         const originalText = this.originalButtonTexts.get(buttonElement);
-        
+
         if (textElement && originalText) {
             textElement.textContent = originalText;
             console.log('Restored button text to:', originalText);
@@ -500,7 +616,7 @@ class HandballSoundboard {
                 clearTimeout(this.buttonTextTimers.get(buttonElement));
                 this.buttonTextTimers.delete(buttonElement);
             }
-            
+
             // Restore text and remove playing class
             const textElement = buttonElement.querySelector('.text');
             if (textElement) {
@@ -508,7 +624,7 @@ class HandballSoundboard {
             }
             buttonElement.classList.remove('playing');
         });
-        
+
         console.log('All button texts restored to original state');
     }
 
@@ -523,7 +639,7 @@ class HandballSoundboard {
         // This ensures the UI shows "stopped" state right away
         this.currentlyPlaying = [];
         this.updateStatusDisplay();
-        
+
         // Restore all button texts immediately
         this.restoreAllButtonTexts();
 
@@ -582,7 +698,7 @@ class HandballSoundboard {
         });
         this.currentlyPlaying = [];
         this.updateStatusDisplay();
-        
+
         // Restore all button texts immediately
         this.restoreAllButtonTexts();
     }
@@ -613,7 +729,7 @@ class HandballSoundboard {
         // Clear array and update status immediately
         this.currentlyPlaying = [];
         this.updateStatusDisplay();
-        
+
         // Restore all button texts immediately
         this.restoreAllButtonTexts();
 
@@ -1042,6 +1158,32 @@ let soundboard;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing soundboard...');
     soundboard = new HandballSoundboard();
+    window.soundboard = soundboard; // Make it globally accessible
+
+    // Debug-Funktionen für die Konsole
+    window.testGeneratedSound = () => {
+        console.log('Testing generated sound...');
+        const button = document.querySelector('[data-sound="tor"]');
+        if (button) {
+            soundboard.playGeneratedSound('tor', button);
+        }
+    };
+
+    window.testCustomSound = (soundType = 'tor') => {
+        console.log('Testing custom sound for:', soundType);
+        const button = document.querySelector(`[data-sound="${soundType}"]`);
+        if (button && soundboard.customSounds[soundType]?.length > 0) {
+            soundboard.playCustomSound(soundType, button);
+        } else {
+            console.log('No custom sounds available for:', soundType);
+        }
+    };
+
+    window.debugSounds = () => {
+        soundboard.debugSoundSystem();
+    };
+
+    console.log('🎵 Soundboard loaded! Debug functions: testGeneratedSound(), testCustomSound(type), debugSounds()');
 });
 
 console.log('Script.js loaded completely');
