@@ -123,6 +123,12 @@ header {
     flex-shrink: 0;
 }
 
+.button-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .volume-control {
     display: flex;
     align-items: center;
@@ -538,36 +544,52 @@ footer {
     }
 
     .controls {
+        display: flex;
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
+        gap: 8px;
         padding: 10px 12px;
         margin-bottom: 10px;
     }
 
     .volume-control {
+        display: flex;
         justify-content: center;
+        align-items: center;
         min-width: auto;
         order: 1;
+        gap: 10px;
+    }
+
+    /* Button-Container für bessere Anordnung */
+    .button-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        order: 2;
     }
 
     .stop-btn,
-    .manage-btn,
-    .help-btn {
-        padding: 10px 15px;
-        font-size: 0.9rem;
+    .manage-btn {
+        flex: 1;
+        padding: 10px 12px;
+        font-size: 0.85rem;
         border-radius: 20px;
+        min-height: 44px;
+        white-space: nowrap;
     }
 
     .help-btn {
-        width: 35px;
-        height: 35px;
-        align-self: center;
-        order: 3;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        flex-shrink: 0;
+        font-size: 1rem;
+        border-radius: 50%;
     }
 
     .manage-btn {
-        order: 2;
         margin-left: 0;
     }
 
@@ -577,28 +599,34 @@ footer {
     }
 
     .game-actions-row {
+        display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+        gap: 8px;
         max-width: 100%;
+        margin: 0;
     }
 
     .penalties-row {
+        display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+        gap: 8px;
         max-width: 100%;
+        margin: 0;
     }
 
     .tor-main {
         width: 100%;
-        max-width: 180px;
+        max-width: 200px;
         margin: 0 auto;
-        min-height: 100px;
-        padding: 15px 10px;
+        min-height: 90px;
+        padding: 12px 8px;
     }
 
     .top-row {
+        display: flex;
         flex-direction: column;
-        gap: 12px;
+        align-items: center;
+        gap: 10px;
         padding-top: 0;
     }
 
@@ -609,9 +637,10 @@ footer {
         max-width: 100%;
         flex-direction: row;
         justify-content: space-around;
-        padding: 8px 12px;
-        margin: 0 auto 8px auto;
+        padding: 6px 10px;
+        margin: 0 auto 6px auto;
         border-radius: 8px;
+        font-size: 0.8rem;
     }
 
     .status-left,
@@ -638,21 +667,25 @@ footer {
     }
 
     .sound-btn {
-        padding: 12px 8px;
-        min-height: 75px;
+        padding: 10px 6px;
+        min-height: 70px;
         border-radius: 12px;
+        gap: 4px;
     }
 
     .icon {
-        font-size: clamp(1.5rem, 4.5vw, 1.8rem);
+        font-size: clamp(1.4rem, 4vw, 1.6rem);
+        line-height: 1;
     }
 
     .text {
-        font-size: clamp(0.7rem, 3vw, 0.8rem);
+        font-size: clamp(0.65rem, 2.8vw, 0.75rem);
+        line-height: 1.1;
     }
 
     .file-count {
-        font-size: clamp(0.6rem, 2.5vw, 0.7rem);
+        font-size: clamp(0.55rem, 2.2vw, 0.65rem);
+        line-height: 1;
     }
 
     .copyright-footer {
@@ -667,20 +700,58 @@ footer {
 
 /* Sehr kleine Bildschirme (iPhone SE, etc.) */
 @media (max-width: 375px) {
+    .container {
+        padding: 8px;
+    }
+
+    .controls {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .button-row {
+        gap: 6px;
+    }
+
+    .stop-btn,
+    .manage-btn {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+
+    .help-btn {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+    }
 
     .game-actions-row,
     .penalties-row {
-        gap: 8px;
+        gap: 6px;
     }
 
     .sound-btn {
-        padding: 10px 6px;
-        min-height: 70px;
+        padding: 8px 4px;
+        min-height: 65px;
+        gap: 3px;
     }
 
     .tor-main {
-        min-height: 90px;
-        max-width: 160px;
+        min-height: 80px;
+        max-width: 150px;
+        padding: 10px 6px;
+    }
+
+    .icon {
+        font-size: clamp(1.2rem, 3.5vw, 1.4rem);
+    }
+
+    .text {
+        font-size: clamp(0.6rem, 2.5vw, 0.7rem);
+    }
+
+    .file-count {
+        font-size: clamp(0.5rem, 2vw, 0.6rem);
     }
 }
 
