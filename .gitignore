@@ -1,0 +1,16 @@
+# Entwicklung
+.DS_Store
+Thumbs.db
+*.log
+
+# Editor
+.vscode/
+.idea/
+
+# Temporäre Dateien
+*.tmp
+*.temp
+
+# Python (falls du den lokalen Server verwendest)
+__pycache__/
+*.pyc

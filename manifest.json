@@ -1,0 +1,27 @@
+{
+  "name": "OMO Handball Soundboard",
+  "short_name": "OMO Soundboard",
+  "description": "Handball Soundboard für OMO",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "orientation": "portrait",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "omo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "omo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "entertainment"],
+  "lang": "de"
+}

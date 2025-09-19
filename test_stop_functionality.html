@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stop Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .test-info {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        .test-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Stop Button Functionality Test</h1>
+        
+        <div class="test-info">
+            <h3>Verbesserungen am Stop-Button:</h3>
+            <ul>
+                <li><strong>Sofortige UI-Aktualisierung:</strong> Status zeigt sofort "Bereit" an</li>
+                <li><strong>Schnellerer Fade-out:</strong> Audio stoppt in 0.5 Sekunden statt 1.2 Sekunden</li>
+                <li><strong>Doppelklick für Sofort-Stop:</strong> Komplett ohne Fade-out</li>
+                <li><strong>Bessere visuelle Rückmeldung:</strong> Button-Animation bei Force-Stop</li>
+            </ul>
+        </div>
+
+        <h3>Test-Anweisungen:</h3>
+        <ol>
+            <li>Öffne die Hauptanwendung (index.html)</li>
+            <li>Spiele einen Sound ab (z.B. TOR-Button)</li>
+            <li>Teste den Stop-Button:
+                <ul>
+                    <li><strong>Einfacher Klick:</strong> Fade-out über 0.5 Sekunden</li>
+                    <li><strong>Doppelklick:</strong> Sofortiger Stop ohne Fade-out</li>
+                </ul>
+            </li>
+            <li>Überprüfe, dass der Status sofort auf "Bereit" wechselt</li>
+        </ol>
+
+        <div style="margin-top: 30px; padding: 15px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h4>✅ Problem gelöst:</h4>
+            <p>Der Stop-Button funktioniert jetzt zuverlässig und zeigt sofort den korrekten Status an, auch wenn noch ein kurzer Fade-out läuft.</p>
+        </div>
+
+        <button class="test-button" onclick="window.open('index.html', '_blank')">
+            🚀 Hauptanwendung öffnen
+        </button>
+    </div>
+</body>
+</html>

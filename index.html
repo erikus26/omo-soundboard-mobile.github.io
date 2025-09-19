@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handball Soundboard</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="OMO Soundboard">
+    <link rel="apple-touch-icon" href="omo.png">
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="title-container">
+                <img src="omo.png" alt="OMO Logo" class="logo">
+                <h1 class="title">OMO Soundboard</h1>
+            </div>
+        </header>
+
+        <div class="controls">
+            <div class="volume-control">
+                <label for="volume">🔊 Lautstärke:</label>
+                <input type="range" id="volume" min="0" max="100" value="70">
+                <span id="volume-display">70%</span>
+            </div>
+            <button id="stop-all" class="stop-btn"
+                title="Einfach klicken: Fade-out Stop | Doppelklick: Sofort stoppen">⏹️ Alle Stoppen</button>
+            <button id="manage-sounds" class="manage-btn">🎵 Sounds Verwalten</button>
+            <button id="help-btn" class="help-btn" title="Benutzerhandbuch anzeigen">❓</button>
+        </div>
+
+        <div class="soundboard">
+            <!-- Top row - TOR button with status displays -->
+            <div class="top-row">
+                <div class="status-display status-left" id="status-display">
+                    <div class="status-item">
+                        <span class="status-label">Status:</span>
+                        <span class="status-value" id="playback-status">Bereit</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Sound:</span>
+                        <span class="status-value" id="current-sound">-</span>
+                    </div>
+                </div>
+
+                <button class="sound-btn goal tor-main" data-sound="tor">
+                    <span class="icon">⚽</span>
+                    <span class="text">TOR!</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+
+                <div class="status-display status-right" id="files-status-display">
+                    <div class="status-item">
+                        <span class="status-label">Setup:</span>
+                        <span class="status-value" id="setup-status">Unvollständig</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Dateien:</span>
+                        <span class="status-value" id="files-loaded">0/7</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game actions row -->
+            <div class="game-actions-row">
+                <button class="sound-btn penalty" data-sound="7meter">
+                    <span class="icon">🎯</span>
+                    <span class="text">7-METER</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+
+                <button class="sound-btn save" data-sound="parade">
+                    <span class="icon">🥅</span>
+                    <span class="text">PARADE</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+
+                <button class="sound-btn timeout" data-sound="timeout">
+                    <span class="icon">⏸️</span>
+                    <span class="text">TIMEOUT</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+            </div>
+
+            <!-- Penalties and victory row -->
+            <div class="penalties-row">
+                <button class="sound-btn two-minutes" data-sound="2-minuten">
+                    <span class="icon">⏱️</span>
+                    <span class="text">2 MINUTEN</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+
+                <button class="sound-btn red-card" data-sound="rote-karte">
+                    <span class="icon">🟥</span>
+                    <span class="text">ROTE KARTE</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+
+                <button class="sound-btn victory" data-sound="sieg">
+                    <span class="icon">🏆</span>
+                    <span class="text">SIEG!</span>
+                    <span class="file-count">0 Dateien</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Copyright Footer -->
+        <footer class="copyright-footer">
+            <p>© Made by <strong>Erik Böcher</strong></p>
+        </footer>
+    </div>
+
+    <!-- Sound Management Modal -->
+    <div id="sound-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🎵 Sound-Dateien Verwalten</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="sound-selector">
+                    <label for="sound-type-select">Sound-Typ auswählen:</label>
+                    <select id="sound-type-select">
+                        <option value="tor">⚽ TOR!</option>
+                        <option value="7meter">🎯 7-METER</option>
+                        <option value="parade">🥅 PARADE</option>
+                        <option value="rote-karte">� ROETE KARTE</option>
+                        <option value="2-minuten">⏱️ 2 MINUTEN</option>
+                        <option value="timeout">⏸️ TIMEOUT</option>
+                        <option value="sieg">🏆 SIEG</option>
+                    </select>
+                </div>
+
+                <div class="file-upload-area">
+                    <input type="file" id="file-input" accept=".mp3" multiple style="display: none;">
+                    <div class="upload-zone" id="upload-zone">
+                        <div class="upload-icon">📁</div>
+                        <p>MP3-Dateien hier ablegen oder klicken zum Auswählen</p>
+                        <small>Mehrere Dateien werden zufällig abgespielt</small>
+                    </div>
+                </div>
+
+                <div class="current-files" id="current-files">
+                    <h3>Aktuelle Dateien:</h3>
+                    <div class="file-list" id="file-list">
+                        <p class="no-files">Keine Dateien zugewiesen</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="test-sound" class="test-btn">🔊 Test Abspielen</button>
+                <button id="stop-modal-sound" class="stop-modal-btn">⏹️ Stop</button>
+                <button id="clear-files" class="clear-btn">🗑️ Alle Löschen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📖 Benutzerhandbuch</h2>
+                <button class="close-btn" id="close-help">&times;</button>
+            </div>
+            <div class="modal-body help-content">
+                <div class="help-section">
+                    <h3>🎯 Grundfunktionen</h3>
+                    <ul>
+                        <li><strong>Sound abspielen:</strong> Klicke auf einen der Sound-Buttons (TOR, 7-METER, etc.)
+                        </li>
+                        <li><strong>Lautstärke:</strong> Verwende den Schieberegler oben links</li>
+                        <li><strong>Stoppen:</strong> Klicke "Alle Stoppen" (einfach = Fade-out, doppelt = sofort)</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h3>🎵 Eigene Sounds</h3>
+                    <ul>
+                        <li><strong>Sounds hinzufügen:</strong> Klicke "Sounds Verwalten" → Sound-Typ wählen →
+                            MP3-Dateien hochladen</li>
+                        <li><strong>Mehrere Dateien:</strong> Pro Sound-Typ können mehrere MP3s hinzugefügt werden
+                            (zufällige Wiedergabe)</li>
+                        <li><strong>Dateien löschen:</strong> Im Sound-Manager auf das Papierkorb-Symbol klicken</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h3>🎮 Sound-Buttons</h3>
+                    <ul>
+                        <li><strong>TOR:</strong> Hauptfeier für Tore</li>
+                        <li><strong>7-METER:</strong> Siebenmeter-Situationen</li>
+                        <li><strong>PARADE:</strong> Torhüter-Paraden</li>
+                        <li><strong>TIMEOUT:</strong> Auszeiten</li>
+                        <li><strong>2 MINUTEN:</strong> Zeitstrafen</li>
+                        <li><strong>ROTE KARTE:</strong> Platzverweise</li>
+                        <li><strong>SIEG:</strong> Spielende/Sieg-Feier</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h3>💡 Tipps</h3>
+                    <ul>
+                        <li><strong>Button-Text:</strong> Während der Wiedergabe zeigt der Button den Sound-Namen</li>
+                        <li><strong>Datei-Anzahl:</strong> Unter jedem Button siehst du die Anzahl der zugewiesenen
+                            Dateien</li>
+                        <li><strong>Status-Anzeige:</strong> Oben links/rechts siehst du den aktuellen Status</li>
+                        <li><strong>Automatischer Stop:</strong> Neue Sounds stoppen automatisch laufende Sounds</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+
+</html>
