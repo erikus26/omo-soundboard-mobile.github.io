@@ -265,8 +265,12 @@ class PWAHandballSoundboard {
         const debugBtn = document.getElementById('debug-btn');
         if (debugBtn) {
             debugBtn.addEventListener('click', () => {
+                console.log('Debug button clicked');
                 this.openDebugModal();
             });
+            console.log('Debug button event listener added');
+        } else {
+            console.error('Debug button not found!');
         }
 
         // Help button
@@ -444,8 +448,13 @@ class PWAHandballSoundboard {
         console.log('Opening debug modal');
         const modal = document.getElementById('debug-modal');
         if (modal) {
+            modal.style.display = 'flex';
             modal.classList.add('show');
             this.setupDebugModalEventListeners();
+            this.addDebugLog('Debug modal opened');
+        } else {
+            console.error('Debug modal not found!');
+            alert('Debug-Modal nicht gefunden. Bitte Seite neu laden.');
         }
     }
 
@@ -469,6 +478,7 @@ class PWAHandballSoundboard {
     closeDebugModal() {
         const modal = document.getElementById('debug-modal');
         if (modal) {
+            modal.style.display = 'none';
             modal.classList.remove('show');
         }
     }
