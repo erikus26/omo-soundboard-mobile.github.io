@@ -116,8 +116,8 @@ header {
     padding: 12px 15px;
     background: rgba(52, 152, 219, 0.1);
     border-radius: 15px;
-    flex-wrap: nowrap;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
     position: relative;
     z-index: 1;
     flex-shrink: 0;
@@ -126,18 +126,15 @@ header {
 .button-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    flex-wrap: nowrap;
+    gap: 10px;
 }
 
 .volume-control {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex: 0 1 200px;
-    min-width: 120px;
-    max-width: 200px;
+    gap: 10px;
+    flex: 1;
+    min-width: 200px;
 }
 
 .volume-control label {
@@ -213,27 +210,6 @@ header {
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
     margin-left: 10px;
-}
-
-/* Desktop Button-Row Anpassung für 4 Buttons */
-@media (min-width: 769px) {
-    .button-row {
-        gap: 6px;
-    }
-    
-    .stop-btn,
-    .manage-btn {
-        padding: 8px 12px;
-        font-size: 0.85rem;
-        white-space: nowrap;
-    }
-    
-    .debug-btn,
-    .help-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 0.9rem;
-    }
 }
 
 @media (hover: hover) {
@@ -590,28 +566,26 @@ footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         order: 2;
-        width: 100%;
     }
 
     .stop-btn,
     .manage-btn {
         flex: 1;
-        padding: 8px 10px;
-        font-size: 0.8rem;
-        border-radius: 18px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        border-radius: 20px;
         min-height: 44px;
         white-space: nowrap;
     }
 
-    .debug-btn,
     .help-btn {
         width: 44px;
         height: 44px;
         min-width: 44px;
         flex-shrink: 0;
-        font-size: 0.9rem;
+        font-size: 1rem;
         border-radius: 50%;
     }
 
@@ -735,31 +709,20 @@ footer {
         gap: 6px;
     }
 
-    .volume-control {
-        max-width: 160px;
-        gap: 6px;
-    }
-
-    .volume-control label {
-        font-size: 0.8rem;
-    }
-
     .button-row {
-        gap: 4px;
+        gap: 6px;
     }
 
     .stop-btn,
     .manage-btn {
-        padding: 6px 8px;
-        font-size: 0.7rem;
+        padding: 8px 10px;
+        font-size: 0.8rem;
     }
 
-    .debug-btn,
     .help-btn {
-        width: 38px;
-        height: 38px;
-        min-width: 38px;
-        font-size: 0.8rem;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
     }
 
     .game-actions-row,
@@ -1189,25 +1152,6 @@ Help Button */
     -webkit-tap-highlight-color: transparent;
 }
 
-.debug-btn {
-    background: linear-gradient(135deg, #e67e22, #d35400);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-
 .help-btn:hover {
     transform: translateY(-2px) scale(1.05);
     box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
@@ -1339,89 +1283,4 @@ body {
 
 .soundboard {
     overscroll-behavior: contain;
-}
-
-/* D
-ebug Modal Styles */
-.debug-section {
-    margin-bottom: 20px;
-}
-
-.debug-section h3 {
-    margin: 0 0 10px 0;
-    color: #2c3e50;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.debug-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.debug-test-btn {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
-}
-
-.debug-test-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
-}
-
-.debug-test-btn:active {
-    transform: translateY(0);
-}
-
-.debug-logs {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 10px;
-    max-height: 200px;
-    overflow-y: auto;
-    font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    color: #495057;
-}
-
-.debug-logs:empty::before {
-    content: 'Keine Debug-Logs verfügbar. Klicken Sie auf einen Test-Button.';
-    color: #6c757d;
-    font-style: italic;
-}
-
-/* Mobile Debug Styles */
-@media (max-width: 768px) {
-    .debug-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-    }
-
-    .debug-buttons {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-
-    .debug-test-btn {
-        padding: 10px 12px;
-        font-size: 0.9rem;
-    }
-
-    .debug-logs {
-        max-height: 150px;
-        font-size: 0.75rem;
-    }
 }
