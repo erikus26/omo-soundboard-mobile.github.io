@@ -134,7 +134,8 @@ header {
     align-items: center;
     gap: 10px;
     flex: 1;
-    min-width: 200px;
+    min-width: 180px;
+    max-width: 300px;
 }
 
 .volume-control label {
@@ -566,15 +567,15 @@ footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         order: 2;
     }
 
     .stop-btn,
     .manage-btn {
         flex: 1;
-        padding: 10px 12px;
-        font-size: 0.85rem;
+        padding: 10px 15px;
+        font-size: 0.9rem;
         border-radius: 20px;
         min-height: 44px;
         white-space: nowrap;
@@ -710,19 +711,20 @@ footer {
     }
 
     .button-row {
-        gap: 6px;
+        gap: 8px;
     }
 
     .stop-btn,
     .manage-btn {
-        padding: 8px 10px;
+        padding: 8px 12px;
         font-size: 0.8rem;
     }
 
     .help-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        font-size: 1rem;
     }
 
     .game-actions-row,
