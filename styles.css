@@ -518,39 +518,42 @@ footer {
 /* iPhone und Mobile Optimierungen */
 @media (max-width: 768px) {
     body {
-        padding: env(safe-area-inset-top, 5px) env(safe-area-inset-right, 5px) env(safe-area-inset-bottom, 5px) env(safe-area-inset-left, 5px);
+        padding: env(safe-area-inset-top, 2px) env(safe-area-inset-right, 5px) env(safe-area-inset-bottom, 2px) env(safe-area-inset-left, 5px);
     }
 
     .container {
-        padding: 12px;
+        padding: 8px;
         margin: 0;
         width: 100vw;
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
+        height: 100vh;
+        height: -webkit-fill-available;
+        max-height: 100vh;
+        max-height: -webkit-fill-available;
         border-radius: 0;
+        overflow: hidden;
     }
 
     .title-container {
         flex-direction: row;
-        gap: 8px;
-        margin-bottom: 5px;
+        gap: 6px;
+        margin-bottom: 3px;
     }
 
     .logo {
-        height: 40px;
+        height: 32px;
     }
 
     .title {
-        font-size: clamp(1.2rem, 5vw, 1.8rem);
+        font-size: clamp(1rem, 4.5vw, 1.4rem);
     }
 
     .controls {
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
-        padding: 10px 12px;
-        margin-bottom: 10px;
+        gap: 6px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
     }
 
     .volume-control {
@@ -567,26 +570,26 @@ footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         order: 2;
     }
 
     .stop-btn,
     .manage-btn {
         flex: 1;
-        padding: 10px 15px;
-        font-size: 0.9rem;
-        border-radius: 20px;
-        min-height: 44px;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        border-radius: 18px;
+        min-height: 40px;
         white-space: nowrap;
     }
 
     .help-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
         flex-shrink: 0;
-        font-size: 1rem;
+        font-size: 0.9rem;
         border-radius: 50%;
     }
 
@@ -595,14 +598,18 @@ footer {
     }
 
     .soundboard {
-        gap: 12px;
-        margin-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 5px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .game-actions-row {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 6px;
         max-width: 100%;
         margin: 0;
     }
@@ -610,24 +617,24 @@ footer {
     .penalties-row {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 6px;
         max-width: 100%;
         margin: 0;
     }
 
     .tor-main {
         width: 100%;
-        max-width: 200px;
+        max-width: 160px;
         margin: 0 auto;
-        min-height: 90px;
-        padding: 12px 8px;
+        min-height: 70px;
+        padding: 10px 8px;
     }
 
     .top-row {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
         padding-top: 0;
     }
 
@@ -638,10 +645,10 @@ footer {
         max-width: 100%;
         flex-direction: row;
         justify-content: space-around;
-        padding: 6px 10px;
-        margin: 0 auto 6px auto;
-        border-radius: 8px;
-        font-size: 0.8rem;
+        padding: 4px 8px;
+        margin: 0 auto 4px auto;
+        border-radius: 6px;
+        font-size: 0.7rem;
     }
 
     .status-left,
@@ -658,73 +665,83 @@ footer {
     }
 
     .status-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
     }
 
     .status-value {
         text-align: center;
         max-width: none;
-        font-size: 0.8rem;
+        font-size: 0.7rem;
     }
 
     .sound-btn {
-        padding: 10px 6px;
-        min-height: 70px;
-        border-radius: 12px;
-        gap: 4px;
+        padding: 8px 4px;
+        min-height: 60px;
+        border-radius: 10px;
+        gap: 3px;
     }
 
     .icon {
-        font-size: clamp(1.4rem, 4vw, 1.6rem);
+        font-size: clamp(1.2rem, 3.5vw, 1.4rem);
         line-height: 1;
     }
 
     .text {
-        font-size: clamp(0.65rem, 2.8vw, 0.75rem);
-        line-height: 1.1;
+        font-size: clamp(0.6rem, 2.5vw, 0.7rem);
+        line-height: 1;
     }
 
     .file-count {
-        font-size: clamp(0.55rem, 2.2vw, 0.65rem);
+        font-size: clamp(0.5rem, 2vw, 0.6rem);
         line-height: 1;
     }
 
     .copyright-footer {
-        padding: 6px 10px;
-        margin-top: 5px;
+        padding: 4px 8px;
+        margin-top: 3px;
+        flex-shrink: 0;
     }
 
     .copyright-footer p {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
     }
 }
 
 /* Sehr kleine Bildschirme (iPhone SE, etc.) */
 @media (max-width: 375px) {
     .container {
-        padding: 8px;
+        padding: 5px;
     }
 
     .controls {
-        padding: 8px 10px;
-        gap: 6px;
+        padding: 6px 8px;
+        gap: 4px;
+    }
+
+    .volume-control {
+        gap: 4px;
+    }
+
+    .volume-control label {
+        font-size: 0.75rem;
     }
 
     .button-row {
-        gap: 8px;
+        gap: 6px;
     }
 
     .stop-btn,
     .manage-btn {
-        padding: 8px 12px;
-        font-size: 0.8rem;
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        min-height: 36px;
     }
 
     .help-btn {
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
-        font-size: 1rem;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        font-size: 0.85rem;
     }
 
     .game-actions-row,
@@ -733,23 +750,23 @@ footer {
     }
 
     .sound-btn {
-        padding: 8px 4px;
-        min-height: 65px;
-        gap: 3px;
+        padding: 6px 3px;
+        min-height: 55px;
+        gap: 2px;
     }
 
     .tor-main {
-        min-height: 80px;
-        max-width: 150px;
-        padding: 10px 6px;
+        min-height: 65px;
+        max-width: 130px;
+        padding: 8px 5px;
     }
 
     .icon {
-        font-size: clamp(1.2rem, 3.5vw, 1.4rem);
+        font-size: clamp(1rem, 3vw, 1.2rem);
     }
 
     .text {
-        font-size: clamp(0.6rem, 2.5vw, 0.7rem);
+        font-size: clamp(0.55rem, 2.2vw, 0.65rem);
     }
 
     .file-count {
