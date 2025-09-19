@@ -143,6 +143,7 @@ header {
     background: #ddd;
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 #volume::-webkit-slider-thumb {
@@ -285,8 +286,15 @@ header {
 }
 
 @keyframes pulse-text {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 .soundboard {
@@ -520,11 +528,11 @@ footer {
         gap: 8px;
         margin-bottom: 5px;
     }
-    
+
     .logo {
         height: 40px;
     }
-    
+
     .title {
         font-size: clamp(1.2rem, 5vw, 1.8rem);
     }
@@ -543,7 +551,9 @@ footer {
         order: 1;
     }
 
-    .stop-btn, .manage-btn, .help-btn {
+    .stop-btn,
+    .manage-btn,
+    .help-btn {
         padding: 10px 15px;
         font-size: 0.9rem;
         border-radius: 20px;
@@ -571,13 +581,13 @@ footer {
         gap: 10px;
         max-width: 100%;
     }
-    
+
     .penalties-row {
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
         max-width: 100%;
     }
-    
+
     .tor-main {
         width: 100%;
         max-width: 180px;
@@ -585,13 +595,13 @@ footer {
         min-height: 100px;
         padding: 15px 10px;
     }
-    
+
     .top-row {
         flex-direction: column;
         gap: 12px;
         padding-top: 0;
     }
-    
+
     .status-display {
         position: static;
         transform: none;
@@ -603,23 +613,24 @@ footer {
         margin: 0 auto 8px auto;
         border-radius: 8px;
     }
-    
-    .status-left, .status-right {
+
+    .status-left,
+    .status-right {
         position: static;
         width: auto;
         margin: 0;
     }
-    
+
     .status-item {
         flex-direction: column;
         text-align: center;
         gap: 2px;
     }
-    
+
     .status-label {
         font-size: 0.7rem;
     }
-    
+
     .status-value {
         text-align: center;
         max-width: none;
@@ -648,7 +659,7 @@ footer {
         padding: 6px 10px;
         margin-top: 5px;
     }
-    
+
     .copyright-footer p {
         font-size: 0.7rem;
     }
@@ -656,16 +667,17 @@ footer {
 
 /* Sehr kleine Bildschirme (iPhone SE, etc.) */
 @media (max-width: 375px) {
+
     .game-actions-row,
     .penalties-row {
         gap: 8px;
     }
-    
+
     .sound-btn {
         padding: 10px 6px;
         min-height: 70px;
     }
-    
+
     .tor-main {
         min-height: 90px;
         max-width: 160px;
@@ -678,20 +690,20 @@ footer {
         min-height: 100vh;
         min-height: -webkit-fill-available;
     }
-    
+
     .soundboard {
         gap: 8px;
     }
-    
+
     .sound-btn {
         min-height: 60px;
         padding: 8px 6px;
     }
-    
+
     .tor-main {
         min-height: 80px;
     }
-    
+
     .top-row {
         gap: 8px;
     }
@@ -1011,6 +1023,7 @@ footer {
         font-size: 2.5rem;
     }
 }
+
 /* Copy
 right Footer */
 .copyright-footer {
@@ -1036,26 +1049,18 @@ right Footer */
     font-weight: 600;
 }
 
-/* Responsive copyright */
+/* Zusätzliche Copyright Responsive Styles */
 @media (max-width: 768px) {
-    .soundboard {
-        margin-bottom: 15px;
-        gap: 1.5vh;
-    }
-    
-    .controls {
-        margin-bottom: 1vh;
-        padding: 1vh 1.5vw;
-    }
-    
     .copyright-footer {
         padding: 8px 15px;
     }
-    
+
     .copyright-footer p {
         font-size: 0.75rem;
     }
-}/* 
+}
+
+/* 
 Help Button */
 .help-btn {
     background: linear-gradient(135deg, #9b59b6, #8e44ad);
@@ -1130,25 +1135,26 @@ Help Button */
         height: 35px;
         font-size: 1rem;
     }
-    
+
     .help-content {
         max-height: 50vh;
     }
-    
+
     .help-section {
         padding: 15px;
         margin-bottom: 20px;
     }
 }
-/
-* iPhone spezifische Optimierungen */
+
+/* iPhone spezifische Optimierungen */
 @supports (-webkit-touch-callout: none) {
+
     /* iPhone Safari spezifische Styles */
     .container {
         min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     }
-    
+
     body {
         min-height: 100vh;
         min-height: 100dvh;
@@ -1160,34 +1166,36 @@ Help Button */
     input[type="range"] {
         font-size: 16px;
     }
-    
+
     select {
         font-size: 16px;
     }
 }
 
-/* Verbesserte Touch-Targets für iPhone */
+/* Zusätzliche iPhone Touch-Optimierungen */
 @media (max-width: 768px) {
+
+    /* Touch-Targets */
     .sound-btn {
-        min-height: 44px; /* Apple's empfohlene Mindestgröße */
+        min-height: max(44px, 75px);
+        /* Apple's empfohlene Mindestgröße */
         min-width: 44px;
     }
-    
-    .stop-btn, .manage-btn {
+
+    .stop-btn,
+    .manage-btn {
         min-height: 44px;
         padding: 12px 16px;
     }
-    
+
     .help-btn {
         min-height: 44px;
         min-width: 44px;
         width: 44px;
         height: 44px;
     }
-}
 
-/* Optimierung für iPhone Notch */
-@media (max-width: 768px) {
+    /* iPhone Notch Optimierung */
     .container {
         padding-top: max(12px, env(safe-area-inset-top));
         padding-bottom: max(12px, env(safe-area-inset-bottom));
