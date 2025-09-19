@@ -116,8 +116,8 @@ header {
     padding: 12px 15px;
     background: rgba(52, 152, 219, 0.1);
     border-radius: 15px;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 12px;
     position: relative;
     z-index: 1;
     flex-shrink: 0;
@@ -126,15 +126,18 @@ header {
 .button-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
 }
 
 .volume-control {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 200px;
+    gap: 8px;
+    flex: 0 1 200px;
+    min-width: 120px;
+    max-width: 200px;
 }
 
 .volume-control label {
@@ -210,6 +213,27 @@ header {
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
     margin-left: 10px;
+}
+
+/* Desktop Button-Row Anpassung für 4 Buttons */
+@media (min-width: 769px) {
+    .button-row {
+        gap: 6px;
+    }
+    
+    .stop-btn,
+    .manage-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    
+    .debug-btn,
+    .help-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 0.9rem;
+    }
 }
 
 @media (hover: hover) {
@@ -566,26 +590,28 @@ footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         order: 2;
+        width: 100%;
     }
 
     .stop-btn,
     .manage-btn {
         flex: 1;
-        padding: 10px 12px;
-        font-size: 0.85rem;
-        border-radius: 20px;
+        padding: 8px 10px;
+        font-size: 0.8rem;
+        border-radius: 18px;
         min-height: 44px;
         white-space: nowrap;
     }
 
+    .debug-btn,
     .help-btn {
         width: 44px;
         height: 44px;
         min-width: 44px;
         flex-shrink: 0;
-        font-size: 1rem;
+        font-size: 0.9rem;
         border-radius: 50%;
     }
 
@@ -709,20 +735,31 @@ footer {
         gap: 6px;
     }
 
-    .button-row {
+    .volume-control {
+        max-width: 160px;
         gap: 6px;
+    }
+
+    .volume-control label {
+        font-size: 0.8rem;
+    }
+
+    .button-row {
+        gap: 4px;
     }
 
     .stop-btn,
     .manage-btn {
-        padding: 8px 10px;
-        font-size: 0.8rem;
+        padding: 6px 8px;
+        font-size: 0.7rem;
     }
 
+    .debug-btn,
     .help-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        font-size: 0.8rem;
     }
 
     .game-actions-row,
@@ -1302,7 +1339,9 @@ body {
 
 .soundboard {
     overscroll-behavior: contain;
-}/* D
+}
+
+/* D
 ebug Modal Styles */
 .debug-section {
     margin-bottom: 20px;
@@ -1370,17 +1409,17 @@ ebug Modal Styles */
         height: 44px;
         min-width: 44px;
     }
-    
+
     .debug-buttons {
         grid-template-columns: 1fr;
         gap: 8px;
     }
-    
+
     .debug-test-btn {
         padding: 10px 12px;
         font-size: 0.9rem;
     }
-    
+
     .debug-logs {
         max-height: 150px;
         font-size: 0.75rem;
