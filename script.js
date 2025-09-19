@@ -1,1189 +1,1407 @@
-// Handball Soundboard JavaScript
-console.log('Script.js is loading...');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
 
-class HandballSoundboard {
-    constructor() {
-        console.log('HandballSoundboard constructor called');
-        this.customSounds = {};
-        this.currentlyPlaying = [];
-        this.volume = 0.7;
-        this.currentSoundType = 'tor';
-        this.buttonTextTimers = new Map(); // Track text restoration timers
-        this.originalButtonTexts = new Map(); // Store original button texts
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top, 10px) env(safe-area-inset-right, 10px) env(safe-area-inset-bottom, 10px) env(safe-area-inset-left, 10px);
+    position: relative;
+    overflow-x: hidden;
+    margin: 0;
+    -webkit-overflow-scrolling: touch;
+}
 
-        this.initializeSounds();
-        this.loadSavedSounds();
-        this.setupEventListeners();
-        this.updateVolumeDisplay();
-        this.updateFileCountDisplays();
-        this.updateStatusDisplay();
 
-        // Debug: Teste alle Sound-Definitionen
-        this.debugSoundSystem();
 
-        // Cleanup alte URLs beim Schließen der App
-        window.addEventListener('beforeunload', () => {
-            this.cleanupBlobUrls();
-        });
+.container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 15px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    width: min(95vw, 1000px);
+    min-height: calc(100vh - 20px);
+    min-height: calc(-webkit-fill-available - 20px);
+    max-height: calc(100vh - 20px);
+    max-height: calc(-webkit-fill-available - 20px);
+    animation: slideIn 0.6s ease-out;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('omo.png');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 60%;
+    opacity: 0.12;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 20px;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
     }
 
-    cleanupBlobUrls() {
-        // Räume alle Blob-URLs auf, um Memory-Leaks zu vermeiden
-        for (const [soundType, sounds] of Object.entries(this.customSounds)) {
-            sounds.forEach(sound => {
-                if (sound.url && sound.url.startsWith('blob:')) {
-                    URL.revokeObjectURL(sound.url);
-                }
-            });
-        }
-        console.log('Cleaned up blob URLs');
-    }
-
-    debugSoundSystem() {
-        console.log('=== SOUND SYSTEM DEBUG ===');
-        console.log('Sound definitions:', this.soundDefinitions);
-        console.log('Custom sounds:', this.customSounds);
-        console.log('Volume:', this.volume);
-
-        // Teste AudioContext
-        try {
-            const testContext = new (window.AudioContext || window.webkitAudioContext)();
-            console.log('AudioContext test: SUCCESS', testContext.state);
-            testContext.close();
-        } catch (error) {
-            console.error('AudioContext test: FAILED', error);
-        }
-
-        // Teste Audio-Element
-        try {
-            const testAudio = new Audio();
-            console.log('Audio element test: SUCCESS');
-        } catch (error) {
-            console.error('Audio element test: FAILED', error);
-        }
-
-        console.log('=== END DEBUG ===');
-    }
-
-    initializeSounds() {
-        this.soundDefinitions = {
-            'tor': [{ text: 'TOOOOOOR!', pitch: 1.2, duration: 2000 }],
-            '7meter': [{ text: 'Sieben Meter!', pitch: 1.0, duration: 1500 }],
-            'parade': [{ text: 'Parade!', pitch: 1.1, duration: 1000 }],
-            'rote-karte': [{ text: 'Rote Karte!', pitch: 0.7, duration: 2000 }],
-            '2-minuten': [{ text: 'Zwei Minuten!', pitch: 0.8, duration: 1800 }],
-            'timeout': [{ text: 'Timeout!', pitch: 0.9, duration: 1200 }],
-            'sieg': [{ text: 'SIEG!', pitch: 1.3, duration: 2500 }]
-        };
-
-        Object.keys(this.soundDefinitions).forEach(soundType => {
-            this.customSounds[soundType] = [];
-        });
-    }
-
-    storeOriginalButtonTexts() {
-        // Store original button texts for restoration
-        document.querySelectorAll('.sound-btn').forEach(button => {
-            const textElement = button.querySelector('.text');
-            if (textElement) {
-                this.originalButtonTexts.set(button, textElement.textContent);
-                console.log('Stored original text for button:', textElement.textContent);
-            }
-        });
-    }
-
-    async initIndexedDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('OMOSoundboard', 1);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('sounds')) {
-                    const store = db.createObjectStore('sounds', { keyPath: 'id' });
-                    store.createIndex('soundType', 'soundType', { unique: false });
-                }
-            };
-        });
-    }
-
-    async loadSavedSounds() {
-        console.log('Loading saved sounds from IndexedDB...');
-        try {
-            const db = await this.initIndexedDB();
-            const transaction = db.transaction(['sounds'], 'readonly');
-            const store = transaction.objectStore('sounds');
-            const request = store.getAll();
-
-            request.onsuccess = () => {
-                const savedSounds = request.result;
-                console.log('Found saved sounds:', savedSounds.length, 'files');
-
-                let loadedCount = 0;
-                savedSounds.forEach(soundData => {
-                    try {
-                        console.log('Processing saved sound:', soundData.name, 'Type:', soundData.soundType);
-                        console.log('FileData type:', typeof soundData.fileData, 'Size:', soundData.fileData?.byteLength || 'unknown');
-
-                        if (this.customSounds[soundData.soundType] && soundData.fileData) {
-                            // Validiere ArrayBuffer
-                            if (soundData.fileData instanceof ArrayBuffer && soundData.fileData.byteLength > 0) {
-                                this.customSounds[soundData.soundType].push({
-                                    name: soundData.name,
-                                    fileData: soundData.fileData,
-                                    url: null
-                                });
-                                loadedCount++;
-                                console.log(`✅ Restored sound: ${soundData.name} for ${soundData.soundType}`);
-                            } else {
-                                console.error('❌ Invalid fileData for:', soundData.name);
-                            }
-                        } else {
-                            console.error('❌ Invalid sound type or missing fileData:', soundData.soundType, soundData.name);
-                        }
-                    } catch (error) {
-                        console.error('❌ Error restoring sound:', soundData.name, error);
-                    }
-                });
-
-                console.log(`Loaded ${loadedCount} of ${savedSounds.length} sounds successfully`);
-
-                // Update UI after loading
-                this.updateFileCountDisplays();
-                this.updateStatusDisplay();
-                console.log('Sound loading completed');
-            };
-
-            request.onerror = () => {
-                console.error('Error loading sounds from IndexedDB:', request.error);
-            };
-
-        } catch (error) {
-            console.error('Error initializing IndexedDB:', error);
-        }
-    }
-
-    async saveSounds() {
-        console.log('Saving sounds to IndexedDB...');
-        try {
-            const db = await this.initIndexedDB();
-
-            // First, clear existing sounds
-            await new Promise((resolve, reject) => {
-                const clearTransaction = db.transaction(['sounds'], 'readwrite');
-                const clearStore = clearTransaction.objectStore('sounds');
-                const clearRequest = clearStore.clear();
-
-                clearRequest.onsuccess = () => resolve();
-                clearRequest.onerror = () => reject(clearRequest.error);
-            });
-
-            // Prepare all sound data first (outside of transaction)
-            const allSoundData = [];
-            for (const [soundType, sounds] of Object.entries(this.customSounds)) {
-                for (let i = 0; i < sounds.length; i++) {
-                    const sound = sounds[i];
-                    try {
-                        let arrayBuffer;
-
-                        if (sound.fileData) {
-                            // Bereits gespeicherte Daten verwenden
-                            arrayBuffer = sound.fileData;
-                        } else if (sound.file) {
-                            // Neue Datei verarbeiten
-                            arrayBuffer = await sound.file.arrayBuffer();
-                        } else {
-                            console.warn('Sound has neither fileData nor file:', sound.name);
-                            continue;
-                        }
-
-                        allSoundData.push({
-                            id: `${soundType}_${i}_${Date.now()}_${Math.random()}`,
-                            soundType: soundType,
-                            name: sound.name,
-                            fileData: arrayBuffer
-                        });
-                    } catch (error) {
-                        console.error('Error preparing sound data:', sound.name, error);
-                    }
-                }
-            }
-
-            // Now save all sounds in a single transaction
-            await new Promise((resolve, reject) => {
-                const saveTransaction = db.transaction(['sounds'], 'readwrite');
-                const saveStore = saveTransaction.objectStore('sounds');
-                let completed = 0;
-                let hasError = false;
-
-                saveTransaction.oncomplete = () => {
-                    if (!hasError) {
-                        console.log('All sounds saved successfully to IndexedDB');
-                        resolve();
-                    }
-                };
-
-                saveTransaction.onerror = () => {
-                    hasError = true;
-                    reject(saveTransaction.error);
-                };
-
-                if (allSoundData.length === 0) {
-                    console.log('No sounds to save');
-                    resolve();
-                    return;
-                }
-
-                allSoundData.forEach(soundData => {
-                    const addRequest = saveStore.add(soundData);
-
-                    addRequest.onsuccess = () => {
-                        completed++;
-                        console.log(`Saved sound: ${soundData.name} for ${soundData.soundType} (${completed}/${allSoundData.length})`);
-                    };
-
-                    addRequest.onerror = () => {
-                        hasError = true;
-                        console.error('Error saving sound:', soundData.name, addRequest.error);
-                    };
-                });
-            });
-
-        } catch (error) {
-            console.error('Error saving sounds to IndexedDB:', error);
-        }
-    }
-
-    setupEventListeners() {
-        console.log('Setting up event listeners');
-
-        // Volume control
-        const volumeSlider = document.getElementById('volume');
-        if (volumeSlider) {
-            volumeSlider.addEventListener('input', (e) => {
-                this.volume = e.target.value / 100;
-                console.log('Volume changed to:', this.volume);
-                this.updateVolumeDisplay();
-                this.updateCurrentlyPlayingVolume();
-            });
-        }
-
-        // Stop all button with double-click for immediate stop
-        const stopBtn = document.getElementById('stop-all');
-        if (stopBtn) {
-            let clickCount = 0;
-            let clickTimer = null;
-
-            stopBtn.addEventListener('click', () => {
-                clickCount++;
-
-                if (clickCount === 1) {
-                    // First click - normal fade-out stop
-                    clickTimer = setTimeout(() => {
-                        this.stopAllSounds();
-                        clickCount = 0;
-                    }, 300); // Wait 300ms for potential second click
-                } else if (clickCount === 2) {
-                    // Double click - immediate force stop
-                    clearTimeout(clickTimer);
-                    console.log('Double-click detected - forcing immediate stop');
-                    this.forceStopAllSounds();
-                    clickCount = 0;
-
-                    // Visual feedback for force stop
-                    stopBtn.style.background = 'linear-gradient(135deg, #c0392b, #a93226)';
-                    stopBtn.style.transform = 'scale(0.9)';
-                    setTimeout(() => {
-                        stopBtn.style.background = '';
-                        stopBtn.style.transform = '';
-                    }, 200);
-                }
-            });
-        }
-
-        // Manage sounds button
-        const manageBtn = document.getElementById('manage-sounds');
-        console.log('Manage button found:', manageBtn);
-        if (manageBtn) {
-            manageBtn.addEventListener('click', () => {
-                console.log('Manage button clicked!');
-                this.openSoundModal();
-            });
-        }
-
-        // Help button
-        const helpBtn = document.getElementById('help-btn');
-        if (helpBtn) {
-            helpBtn.addEventListener('click', () => {
-                this.openHelpModal();
-            });
-        }
-
-        // Sound buttons
-        document.querySelectorAll('.sound-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                const soundType = button.dataset.sound;
-                this.playSound(soundType, button);
-            });
-        });
-
-        // Store original button texts after all event listeners are set up
-        // Use setTimeout to ensure DOM is fully ready
-        setTimeout(() => {
-            this.storeOriginalButtonTexts();
-        }, 100);
-    }
-    updateVolumeDisplay() {
-        const display = document.getElementById('volume-display');
-        if (display) {
-            display.textContent = Math.round(this.volume * 100) + '%';
-        }
-    }
-
-    updateCurrentlyPlayingVolume() {
-        // Update volume for currently playing audio files
-        this.currentlyPlaying.forEach(sound => {
-            if (sound.audio) {
-                sound.audio.volume = this.volume;
-                console.log('Updated playing audio volume to:', this.volume);
-            }
-            if (sound.gainNode) {
-                // For generated sounds, we can't change volume mid-play easily
-                // but we log it for debugging
-                console.log('Generated sound playing, volume will apply to next play');
-            }
-        });
-    }
-
-    updateFileCountDisplays() {
-        document.querySelectorAll('.sound-btn').forEach(button => {
-            const soundType = button.dataset.sound;
-            const fileCount = this.customSounds[soundType] ? this.customSounds[soundType].length : 0;
-            const countElement = button.querySelector('.file-count');
-            if (countElement) {
-                countElement.textContent = fileCount === 1 ? '1 Datei' : `${fileCount} Dateien`;
-                countElement.style.color = fileCount > 0 ? '#2ecc71' : 'rgba(255,255,255,0.7)';
-            }
-        });
-    }
-
-    playSound(soundType, buttonElement) {
-        // Stop any currently playing sounds before starting new one
-        if (this.currentlyPlaying.length > 0) {
-            console.log('Stopping current sounds to play new sound:', soundType);
-            this.stopAllSoundsImmediately(); // Use immediate stop, not fade-out
-        }
-
-        if (this.customSounds[soundType] && this.customSounds[soundType].length > 0) {
-            this.playCustomSound(soundType, buttonElement);
-        } else if (this.soundDefinitions[soundType]) {
-            this.playGeneratedSound(soundType, buttonElement);
-        }
-    }
-
-    async playCustomSound(soundType, buttonElement) {
-        console.log('playCustomSound called for:', soundType);
-
-        const customSounds = this.customSounds[soundType];
-        if (!customSounds || customSounds.length === 0) {
-            console.error('No custom sounds available for:', soundType);
-            return;
-        }
-
-        const randomSound = customSounds[Math.floor(Math.random() * customSounds.length)];
-        console.log('Selected sound:', randomSound);
-
-        try {
-            let audioUrl = null;
-
-            // Verschiedene Wege zur Audio-URL-Erstellung
-            if (randomSound.fileData) {
-                console.log('Creating blob from fileData for:', randomSound.name);
-                const blob = new Blob([randomSound.fileData], { type: 'audio/mpeg' });
-                audioUrl = URL.createObjectURL(blob);
-            } else if (randomSound.file) {
-                console.log('Creating blob from file for:', randomSound.name);
-                audioUrl = URL.createObjectURL(randomSound.file);
-            } else if (randomSound.url) {
-                console.log('Using existing URL for:', randomSound.name);
-                audioUrl = randomSound.url;
-            }
-
-            if (!audioUrl) {
-                console.error('Could not create audio URL for:', randomSound.name);
-                alert('Fehler beim Laden der Audio-Datei: ' + randomSound.name);
-                return;
-            }
-
-            console.log('Audio URL created:', audioUrl.substring(0, 50) + '...');
-
-            // Audio-Element erstellen und konfigurieren
-            const audio = new Audio();
-            audio.preload = 'auto';
-            audio.volume = this.volume;
-
-            // Event-Listener vor dem Setzen der src
-            audio.addEventListener('canplaythrough', () => {
-                console.log('Audio can play through:', randomSound.name);
-            });
-
-            audio.addEventListener('error', (e) => {
-                console.error('Audio error for', randomSound.name, ':', e);
-                console.error('Audio error details:', audio.error);
-                this.handleAudioError(audio, buttonElement, randomSound.name);
-            });
-
-            audio.addEventListener('loadstart', () => {
-                console.log('Audio load started for:', randomSound.name);
-            });
-
-            audio.addEventListener('loadeddata', () => {
-                console.log('Audio data loaded for:', randomSound.name);
-            });
-
-            // Src setzen
-            audio.src = audioUrl;
-
-            this.addVisualFeedback(buttonElement, { text: randomSound.name });
-
-            // Add to currently playing
-            const soundEntry = { audio, button: buttonElement, soundType, url: audioUrl };
-            this.currentlyPlaying.push(soundEntry);
-
-            // Play-Versuch
-            console.log('Attempting to play audio for:', randomSound.name);
-
-            const playPromise = audio.play();
-
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    console.log('Audio playback started successfully for:', randomSound.name);
-                }).catch(error => {
-                    console.error('Play promise rejected for', randomSound.name, ':', error);
-                    this.handleAudioError(audio, buttonElement, randomSound.name);
-                });
-            }
-
-            // Ended event
-            audio.addEventListener('ended', () => {
-                console.log('Audio ended naturally:', randomSound.name);
-                this.cleanupAudioPlayback(audio, buttonElement, audioUrl);
-            });
-
-            this.updateStatusDisplay();
-
-        } catch (error) {
-            console.error('Error in playCustomSound:', error);
-            alert('Fehler beim Abspielen: ' + error.message);
-        }
-    }
-
-    handleAudioError(audio, buttonElement, soundName) {
-        console.error('Handling audio error for:', soundName);
-        this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
-        buttonElement.classList.remove('playing');
-        this.restoreButtonText(buttonElement);
-        this.updateStatusDisplay();
-
-        // Zeige Benutzer-freundliche Fehlermeldung
-        alert('Fehler beim Abspielen von: ' + soundName + '\nBitte versuchen Sie es erneut oder laden Sie die Datei neu hoch.');
-    }
-
-    cleanupAudioPlayback(audio, buttonElement, audioUrl) {
-        // Cleanup nach Audio-Ende
-        this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
-        buttonElement.classList.remove('playing');
-        this.restoreButtonText(buttonElement);
-
-        // URL cleanup
-        if (audioUrl && audioUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(audioUrl);
-        }
-
-        this.updateStatusDisplay();
-    }
-
-    playGeneratedSound(soundType, buttonElement) {
-        console.log('Playing generated sound for:', soundType);
-        const variations = this.soundDefinitions[soundType];
-        const randomSound = variations[Math.floor(Math.random() * variations.length)];
-        console.log('Selected generated sound config:', randomSound);
-        this.createAndPlayAudio(randomSound, buttonElement);
-    }
-
-    createAndPlayAudio(soundConfig, buttonElement) {
-        console.log('Creating and playing generated audio with config:', soundConfig);
-
-        try {
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log('Created new AudioContext');
-            }
-
-            // Resume AudioContext if suspended (required for mobile browsers)
-            if (this.audioContext.state === 'suspended') {
-                console.log('Resuming suspended AudioContext');
-                this.audioContext.resume();
-            }
-
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-
-            oscillator.frequency.setValueAtTime(440 * soundConfig.pitch, this.audioContext.currentTime);
-            oscillator.type = 'sine';
-
-            console.log('Generated sound config - Pitch:', soundConfig.pitch, 'Duration:', soundConfig.duration, 'Volume:', this.volume);
-
-            // Apply volume more effectively for generated sounds
-            const effectiveVolume = this.volume * 0.3; // Scale down for generated sounds
-            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(effectiveVolume, this.audioContext.currentTime + 0.1);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + soundConfig.duration / 1000);
-
-            oscillator.start(this.audioContext.currentTime);
-            oscillator.stop(this.audioContext.currentTime + soundConfig.duration / 1000);
-
-            this.addVisualFeedback(buttonElement, soundConfig);
-
-            // Add to currently playing with sound type info
-            const soundType = buttonElement.dataset.sound;
-            const soundEntry = { oscillator, gainNode, button: buttonElement, soundType };
-            this.currentlyPlaying.push(soundEntry);
-            console.log('Added generated sound to currentlyPlaying, total sounds:', this.currentlyPlaying.length);
-
-            oscillator.onended = () => {
-                console.log('Generated sound ended naturally:', soundType);
-                this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.oscillator !== oscillator);
-                buttonElement.classList.remove('playing');
-
-                // Restore button text when sound ends naturally
-                this.restoreButtonText(buttonElement);
-
-                this.updateStatusDisplay();
-            };
-
-            this.updateStatusDisplay();
-            console.log('Generated sound playback initiated successfully');
-
-        } catch (error) {
-            console.error('Error creating/playing generated audio:', error);
-            alert('Fehler beim Abspielen des generierten Sounds: ' + error.message);
-        }
-    }
-    addVisualFeedback(buttonElement, soundConfig) {
-        buttonElement.classList.add('playing');
-
-        const textElement = buttonElement.querySelector('.text');
-
-        // Clear any existing timer for this button
-        if (this.buttonTextTimers.has(buttonElement)) {
-            clearTimeout(this.buttonTextTimers.get(buttonElement));
-        }
-
-        // Set the new text
-        const newText = soundConfig.text || soundConfig.name || this.originalButtonTexts.get(buttonElement);
-        textElement.textContent = newText;
-
-        // Set a timer to restore original text (but don't rely on it exclusively)
-        const timer = setTimeout(() => {
-            this.restoreButtonText(buttonElement);
-            this.buttonTextTimers.delete(buttonElement);
-        }, 600);
-
-        this.buttonTextTimers.set(buttonElement, timer);
-    }
-
-    restoreButtonText(buttonElement) {
-        const textElement = buttonElement.querySelector('.text');
-        const originalText = this.originalButtonTexts.get(buttonElement);
-
-        if (textElement && originalText) {
-            textElement.textContent = originalText;
-            console.log('Restored button text to:', originalText);
-        }
-    }
-
-    restoreAllButtonTexts() {
-        // Restore all button texts to their original state
-        this.originalButtonTexts.forEach((originalText, buttonElement) => {
-            // Clear any pending timers
-            if (this.buttonTextTimers.has(buttonElement)) {
-                clearTimeout(this.buttonTextTimers.get(buttonElement));
-                this.buttonTextTimers.delete(buttonElement);
-            }
-
-            // Restore text and remove playing class
-            const textElement = buttonElement.querySelector('.text');
-            if (textElement) {
-                textElement.textContent = originalText;
-            }
-            buttonElement.classList.remove('playing');
-        });
-
-        console.log('All button texts restored to original state');
-    }
-
-    stopAllSounds() {
-        console.log('Stopping all sounds with fade out...');
-        console.log('Currently playing sounds:', this.currentlyPlaying.length);
-
-        // Create a copy of the array to avoid issues with concurrent modifications
-        const soundsToStop = [...this.currentlyPlaying];
-
-        // Clear the playing sounds array and update status IMMEDIATELY
-        // This ensures the UI shows "stopped" state right away
-        this.currentlyPlaying = [];
-        this.updateStatusDisplay();
-
-        // Restore all button texts immediately
-        this.restoreAllButtonTexts();
-
-        soundsToStop.forEach((sound, index) => {
-            console.log(`Stopping sound ${index + 1}:`, sound);
-
-            if (sound.oscillator && sound.gainNode) {
-                // Fade out generated sounds using Web Audio API
-                const currentTime = sound.gainNode.context.currentTime;
-                const currentGain = sound.gainNode.gain.value;
-
-                // Fade out over 0.5 seconds (shorter for more responsive feel)
-                sound.gainNode.gain.cancelScheduledValues(currentTime);
-                sound.gainNode.gain.setValueAtTime(currentGain, currentTime);
-                sound.gainNode.gain.linearRampToValueAtTime(0, currentTime + 0.5);
-
-                // Stop the oscillator after fade out
-                setTimeout(() => {
-                    try {
-                        sound.oscillator.stop();
-                    } catch (e) {
-                        console.log('Oscillator already stopped:', e);
-                    }
-                }, 500);
-
-            } else if (sound.audio) {
-                // For audio files, use immediate stop with shorter fade
-                console.log('Stopping audio file:', sound.audio.src);
-                this.fadeOutAudioFast(sound.audio);
-            }
-        });
-
-        // Visual feedback for stop button
-        const stopBtn = document.getElementById('stop-all');
-        if (stopBtn) {
-            stopBtn.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                stopBtn.style.transform = '';
-            }, 150);
-        }
-    }
-
-    stopAllSoundsImmediately() {
-        // Immediate stop without fade-out for sound switching
-        this.currentlyPlaying.forEach(sound => {
-            if (sound.oscillator) {
-                try {
-                    sound.oscillator.stop();
-                } catch (e) {
-                    // Oscillator might already be stopped
-                }
-            } else if (sound.audio) {
-                sound.audio.pause();
-                sound.audio.currentTime = 0;
-            }
-        });
-        this.currentlyPlaying = [];
-        this.updateStatusDisplay();
-
-        // Restore all button texts immediately
-        this.restoreAllButtonTexts();
-    }
-
-    forceStopAllSounds() {
-        // Force stop all sounds immediately without any fade-out
-        console.log('Force stopping all sounds immediately...');
-        console.log('Currently playing sounds:', this.currentlyPlaying.length);
-
-        this.currentlyPlaying.forEach(sound => {
-            if (sound.oscillator && sound.gainNode) {
-                try {
-                    // Immediately set volume to 0 and stop
-                    sound.gainNode.gain.cancelScheduledValues(sound.gainNode.context.currentTime);
-                    sound.gainNode.gain.setValueAtTime(0, sound.gainNode.context.currentTime);
-                    sound.oscillator.stop();
-                } catch (e) {
-                    console.log('Error force stopping oscillator:', e);
-                }
-            } else if (sound.audio) {
-                // Immediately pause and reset audio
-                sound.audio.pause();
-                sound.audio.currentTime = 0;
-                sound.audio.volume = this.volume; // Restore volume for next play
-            }
-        });
-
-        // Clear array and update status immediately
-        this.currentlyPlaying = [];
-        this.updateStatusDisplay();
-
-        // Restore all button texts immediately
-        this.restoreAllButtonTexts();
-
-        console.log('All sounds force stopped');
-    }
-
-    updateStatusDisplay() {
-        const playbackStatus = document.getElementById('playback-status');
-        const currentSound = document.getElementById('current-sound');
-        const setupStatus = document.getElementById('setup-status');
-        const filesLoaded = document.getElementById('files-loaded');
-
-        if (playbackStatus && currentSound) {
-            // Update playback status
-            if (this.currentlyPlaying.length > 0) {
-                playbackStatus.textContent = 'Spielt ab';
-                playbackStatus.className = 'status-value playing';
-            } else {
-                playbackStatus.textContent = 'Bereit';
-                playbackStatus.className = 'status-value';
-            }
-
-            // Update current sound
-            if (this.currentlyPlaying.length > 0) {
-                const playing = this.currentlyPlaying[0];
-                if (playing.isPreview) {
-                    currentSound.textContent = 'Vorschau';
-                } else if (playing.button) {
-                    const soundType = playing.button.dataset.sound;
-                    const soundName = this.getSoundDisplayName(soundType);
-                    currentSound.textContent = soundName;
-                } else {
-                    currentSound.textContent = 'Test Sound';
-                }
-            } else {
-                currentSound.textContent = '-';
-            }
-        }
-
-        if (setupStatus && filesLoaded) {
-            // Count total files and buttons with files
-            let totalFiles = 0;
-            let buttonsWithFiles = 0;
-            const totalButtons = Object.keys(this.soundDefinitions).length;
-
-            Object.entries(this.customSounds).forEach(([soundType, sounds]) => {
-                totalFiles += sounds.length;
-                if (sounds.length > 0) {
-                    buttonsWithFiles++;
-                }
-            });
-
-            // Update files loaded count
-            filesLoaded.textContent = `${totalFiles}/${totalButtons}`;
-
-            // Update setup status
-            if (buttonsWithFiles === totalButtons) {
-                setupStatus.textContent = 'Vollständig';
-                setupStatus.className = 'status-value complete';
-            } else if (buttonsWithFiles > 0) {
-                setupStatus.textContent = 'Teilweise';
-                setupStatus.className = 'status-value incomplete';
-            } else {
-                setupStatus.textContent = 'Unvollständig';
-                setupStatus.className = 'status-value incomplete';
-            }
-        }
-    }
-
-    getSoundDisplayName(soundType) {
-        const displayNames = {
-            'tor': 'TOR!',
-            '7meter': '7-METER',
-            'parade': 'PARADE',
-            'rote-karte': 'ROTE KARTE',
-            '2-minuten': '2 MINUTEN',
-            'timeout': 'TIMEOUT',
-            'einlaufen': 'EINLAUFEN'
-        };
-        return displayNames[soundType] || soundType.toUpperCase();
-    }
-
-    fadeOutAudio(audio) {
-        const fadeOutDuration = 1200; // 1.2 seconds
-        const fadeOutSteps = 30;
-        const stepDuration = fadeOutDuration / fadeOutSteps;
-        const initialVolume = audio.volume;
-        const volumeStep = initialVolume / fadeOutSteps;
-
-        let currentStep = 0;
-
-        console.log('Starting fade out for audio, initial volume:', initialVolume);
-
-        const fadeInterval = setInterval(() => {
-            currentStep++;
-            const newVolume = Math.max(0, initialVolume - (volumeStep * currentStep));
-            audio.volume = newVolume;
-
-            console.log(`Fade step ${currentStep}/${fadeOutSteps}, volume: ${newVolume}`);
-
-            if (currentStep >= fadeOutSteps || newVolume <= 0) {
-                clearInterval(fadeInterval);
-                console.log('Fade complete, pausing audio');
-                audio.pause();
-                audio.currentTime = 0;
-                // Restore original volume for next play
-                audio.volume = this.volume;
-
-                // Remove from currentlyPlaying array
-                this.currentlyPlaying = this.currentlyPlaying.filter(sound => sound.audio !== audio);
-            }
-        }, stepDuration);
-    }
-
-    fadeOutAudioFast(audio) {
-        const fadeOutDuration = 500; // 0.5 seconds for faster response
-        const fadeOutSteps = 20;
-        const stepDuration = fadeOutDuration / fadeOutSteps;
-        const initialVolume = audio.volume;
-        const volumeStep = initialVolume / fadeOutSteps;
-
-        let currentStep = 0;
-
-        console.log('Starting fast fade out for audio, initial volume:', initialVolume);
-
-        const fadeInterval = setInterval(() => {
-            currentStep++;
-            const newVolume = Math.max(0, initialVolume - (volumeStep * currentStep));
-            audio.volume = newVolume;
-
-            if (currentStep >= fadeOutSteps || newVolume <= 0) {
-                clearInterval(fadeInterval);
-                console.log('Fast fade complete, pausing audio');
-                audio.pause();
-                audio.currentTime = 0;
-                // Restore original volume for next play
-                audio.volume = this.volume;
-            }
-        }, stepDuration);
-    }
-
-    openSoundModal() {
-        console.log('openSoundModal called');
-        const modal = document.getElementById('sound-modal');
-        if (modal) {
-            modal.classList.add('show');
-            this.updateFileList();
-            this.setupModalEventListeners();
-        }
-    }
-
-    closeSoundModal() {
-        const modal = document.getElementById('sound-modal');
-        if (modal) {
-            modal.classList.remove('show');
-        }
-    }
-
-    openHelpModal() {
-        console.log('openHelpModal called');
-        const modal = document.getElementById('help-modal');
-        if (modal) {
-            modal.style.display = 'flex';
-            modal.classList.add('show');
-            this.setupHelpModalEventListeners();
-        }
-    }
-
-    closeHelpModal() {
-        const modal = document.getElementById('help-modal');
-        if (modal) {
-            modal.style.display = 'none';
-            modal.classList.remove('show');
-        }
-    }
-
-    setupHelpModalEventListeners() {
-        const modal = document.getElementById('help-modal');
-        const closeBtn = document.getElementById('close-help');
-
-        // Close button
-        if (closeBtn) {
-            closeBtn.onclick = () => this.closeHelpModal();
-        }
-
-        // Click outside to close
-        modal.onclick = (e) => {
-            if (e.target === modal) {
-                this.closeHelpModal();
-            }
-        };
-
-        // ESC key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal.style.display === 'flex') {
-                this.closeHelpModal();
-            }
-        });
-    }
-
-    setupModalEventListeners() {
-        console.log('Setting up modal event listeners');
-        const modal = document.getElementById('sound-modal');
-
-        const closeBtn = modal.querySelector('.close-btn');
-        const soundTypeSelect = document.getElementById('sound-type-select');
-        const fileInput = document.getElementById('file-input');
-        const uploadZone = document.getElementById('upload-zone');
-        const testBtn = document.getElementById('test-sound');
-        const stopModalBtn = document.getElementById('stop-modal-sound');
-        const clearBtn = document.getElementById('clear-files');
-
-        console.log('Modal elements found:', { closeBtn, soundTypeSelect, fileInput, uploadZone, testBtn, clearBtn });
-
-        // Close modal
-        if (closeBtn) {
-            closeBtn.onclick = () => this.closeSoundModal();
-        }
-
-        // Modal background click
-        modal.onclick = (e) => {
-            if (e.target === modal) {
-                this.closeSoundModal();
-            }
-        };
-
-        // Sound type selection
-        if (soundTypeSelect) {
-            soundTypeSelect.onchange = (e) => {
-                this.currentSoundType = e.target.value;
-                this.updateFileList();
-            };
-        }
-
-        // File upload
-        if (uploadZone && fileInput) {
-            uploadZone.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Upload zone clicked, triggering file input');
-                fileInput.click();
-            };
-
-            fileInput.onchange = (e) => {
-                console.log('File input changed:', e.target.files);
-                this.handleFileUpload(e.target.files);
-            };
-        }
-
-        // Drag and drop
-        if (uploadZone) {
-            uploadZone.ondragover = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadZone.classList.add('dragover');
-            };
-
-            uploadZone.ondragenter = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            };
-
-            uploadZone.ondragleave = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadZone.classList.remove('dragover');
-            };
-
-            uploadZone.ondrop = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadZone.classList.remove('dragover');
-                console.log('Files dropped:', e.dataTransfer.files);
-                this.handleFileUpload(e.dataTransfer.files);
-            };
-        }
-
-        // Test, stop and clear buttons
-        if (testBtn) {
-            testBtn.onclick = () => this.testCurrentSound();
-        }
-
-        if (stopModalBtn) {
-            stopModalBtn.onclick = () => this.stopAllSounds();
-        }
-
-        if (clearBtn) {
-            clearBtn.onclick = () => this.clearCurrentSounds();
-        }
-    }
-    handleFileUpload(files) {
-        console.log('handleFileUpload called with files:', files);
-
-        const validFiles = Array.from(files).filter(file =>
-            file.type === 'audio/mpeg' || file.name.toLowerCase().endsWith('.mp3')
-        );
-
-        console.log('Valid MP3 files:', validFiles);
-
-        if (validFiles.length === 0) {
-            alert('Bitte wählen Sie nur MP3-Dateien aus.');
-            return;
-        }
-
-        validFiles.forEach(file => {
-            const url = URL.createObjectURL(file);
-            const soundData = {
-                name: file.name.replace('.mp3', ''),
-                url: url,
-                file: file
-            };
-
-            console.log('Adding sound data:', soundData);
-
-            if (!this.customSounds[this.currentSoundType]) {
-                this.customSounds[this.currentSoundType] = [];
-            }
-
-            this.customSounds[this.currentSoundType].push(soundData);
-        });
-
-        console.log('Current custom sounds:', this.customSounds);
-
-        this.updateFileList();
-        this.updateFileCountDisplays();
-        this.updateStatusDisplay();
-        this.saveSounds(); // Save to localStorage after adding files
-
-        document.getElementById('file-input').value = '';
-    }
-
-    updateFileList() {
-        console.log('updateFileList called for:', this.currentSoundType);
-
-        const fileList = document.getElementById('file-list');
-        const currentFiles = this.customSounds[this.currentSoundType] || [];
-
-        console.log('Current files for', this.currentSoundType, ':', currentFiles);
-
-        if (currentFiles.length === 0) {
-            fileList.innerHTML = '<p class="no-files">Keine Dateien zugewiesen</p>';
-            return;
-        }
-
-        fileList.innerHTML = currentFiles.map((sound, index) => `
-            <div class="file-item">
-                <span class="file-name">${sound.name}</span>
-                <div class="file-actions">
-                    <button class="play-file-btn" onclick="soundboard.playFilePreview(${index})" title="Abspielen">▶️</button>
-                    <button class="remove-file-btn" onclick="soundboard.removeFile(${index})" title="Entfernen">🗑️</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    playFilePreview(index) {
-        const sound = this.customSounds[this.currentSoundType][index];
-        if (sound) {
-            const audio = new Audio(sound.url);
-            console.log('Setting preview volume to:', this.volume);
-            audio.volume = this.volume;
-
-            // Ensure volume is set after audio loads
-            audio.addEventListener('loadeddata', () => {
-                audio.volume = this.volume;
-            });
-
-            // Track this preview sound so it can be stopped
-            this.currentlyPlaying.push({ audio, button: null, isPreview: true });
-
-            audio.play().catch(e => console.log('Preview play failed:', e));
-
-            // Remove from tracking when it ends
-            audio.onended = () => {
-                this.currentlyPlaying = this.currentlyPlaying.filter(playingSound => playingSound.audio !== audio);
-                this.updateStatusDisplay();
-            };
-        }
-    }
-
-    removeFile(index) {
-        const sound = this.customSounds[this.currentSoundType][index];
-        if (sound) {
-            URL.revokeObjectURL(sound.url);
-            this.customSounds[this.currentSoundType].splice(index, 1);
-            this.updateFileList();
-            this.updateFileCountDisplays();
-            this.saveSounds(); // Save to localStorage after removing files
-        }
-    }
-
-    testCurrentSound() {
-        const button = document.querySelector(`[data-sound="${this.currentSoundType}"]`);
-        if (button) {
-            this.playSound(this.currentSoundType, button);
-        }
-    }
-
-    clearCurrentSounds() {
-        if (confirm('Alle Dateien für diesen Sound-Typ löschen?')) {
-            const currentFiles = this.customSounds[this.currentSoundType] || [];
-            currentFiles.forEach(sound => {
-                URL.revokeObjectURL(sound.url);
-            });
-            this.customSounds[this.currentSoundType] = [];
-            this.updateFileList();
-            this.updateFileCountDisplays();
-            this.saveSounds(); // Save to localStorage after clearing files
-        }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-// Prevent default drag behavior on the entire document
-document.addEventListener('dragover', (e) => {
-    e.preventDefault();
-});
+header {
+    text-align: center;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+}
 
-document.addEventListener('drop', (e) => {
-    e.preventDefault();
-});
+.title-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
 
-// Global reference
-let soundboard;
+.logo {
+    height: clamp(35px, 8vw, 55px);
+    width: auto;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing soundboard...');
-    soundboard = new HandballSoundboard();
-    window.soundboard = soundboard; // Make it globally accessible
+.title {
+    font-size: clamp(1.4rem, 5vw, 2.2rem);
+    color: #2c3e50;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    font-weight: 700;
+}
 
-    // Debug-Funktionen für die Konsole
-    window.testGeneratedSound = () => {
-        console.log('Testing generated sound...');
-        const button = document.querySelector('[data-sound="tor"]');
-        if (button) {
-            soundboard.playGeneratedSound('tor', button);
-        }
-    };
+.subtitle {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+    font-weight: 300;
+}
 
-    window.testCustomSound = (soundType = 'tor') => {
-        console.log('Testing custom sound for:', soundType);
-        const button = document.querySelector(`[data-sound="${soundType}"]`);
-        if (button && soundboard.customSounds[soundType]?.length > 0) {
-            soundboard.playCustomSound(soundType, button);
-        } else {
-            console.log('No custom sounds available for:', soundType);
-        }
-    };
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 12px 15px;
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 15px;
+    flex-wrap: wrap;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+}
 
-    window.debugSounds = () => {
-        soundboard.debugSoundSystem();
-    };
+.button-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
 
-    console.log('🎵 Soundboard loaded! Debug functions: testGeneratedSound(), testCustomSound(type), debugSounds()');
-});
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 150px;
+    max-width: 250px;
+}
 
-console.log('Script.js loaded completely');
+.volume-control label {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+#volume {
+    flex: 1;
+    height: 8px;
+    border-radius: 5px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+#volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3498db;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#volume::-webkit-slider-thumb:hover {
+    background: #2980b9;
+    transform: scale(1.2);
+}
+
+#volume-display {
+    font-weight: bold;
+    color: #3498db;
+    min-width: 40px;
+}
+
+.stop-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+@media (hover: hover) {
+    .stop-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+    }
+}
+
+.stop-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+.manage-btn {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
+    margin-left: 10px;
+}
+
+/* Desktop Button-Row Anpassung für 4 Buttons */
+@media (min-width: 769px) {
+    .button-row {
+        gap: 8px;
+    }
+    
+    .stop-btn,
+    .manage-btn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (hover: hover) {
+    .manage-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+    }
+}
+
+.manage-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+.status-display {
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 12px;
+    padding: 1vh 1vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5vh;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    border: 2px solid rgba(52, 152, 219, 0.2);
+    width: min(18vw, 140px);
+    height: fit-content;
+}
+
+.status-left {
+    left: 0;
+}
+
+.status-right {
+    right: 0;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-label {
+    font-size: 0.75rem;
+    color: #7f8c8d;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.status-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.status-value.playing {
+    color: #2ecc71;
+    animation: pulse-text 1.5s infinite;
+}
+
+.status-value.stopping {
+    color: #f39c12;
+}
+
+.status-value.complete {
+    color: #2ecc71;
+    font-weight: 700;
+}
+
+.status-value.incomplete {
+    color: #e74c3c;
+    font-weight: 700;
+}
+
+@keyframes pulse-text {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.soundboard {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
+    justify-content: center;
+    margin-bottom: 15px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.top-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.game-actions-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(15px, 2vw, 25px);
+    width: 100%;
+    max-width: min(75vw, 700px);
+    margin: 0 auto;
+}
+
+.penalties-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(15px, 2vw, 25px);
+    width: 100%;
+    max-width: min(75vw, 700px);
+    margin: 0 auto;
+}
+
+.tor-main {
+    width: min(60vw, 200px);
+    min-height: 120px;
+    padding: 20px 15px;
+    font-size: 1rem;
+}
+
+.tor-main .icon {
+    font-size: clamp(2rem, 6vw, 2.4rem);
+}
+
+.tor-main .text {
+    font-size: clamp(1rem, 4vw, 1.2rem);
+    font-weight: 800;
+}
+
+.tor-main .file-count {
+    font-size: clamp(0.7rem, 3vw, 0.85rem);
+    margin-top: 4px;
+}
+
+
+
+.sound-btn {
+    background: white;
+    border: none;
+    border-radius: 15px;
+    padding: 15px 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+    min-height: 85px;
+    height: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sound-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s;
+}
+
+.sound-btn:hover::before {
+    left: 100%;
+}
+
+/* Touch-optimierte Hover-Effekte */
+@media (hover: hover) {
+    .sound-btn:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+}
+
+.sound-btn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sound-btn.playing {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.icon {
+    font-size: clamp(1.8rem, 5vw, 2.2rem);
+    margin-bottom: 0;
+    line-height: 1;
+}
+
+.text {
+    font-weight: bold;
+    font-size: clamp(0.75rem, 3.5vw, 0.9rem);
+    text-align: center;
+    line-height: 1.1;
+}
+
+.file-count {
+    font-size: clamp(0.65rem, 2.8vw, 0.75rem);
+    opacity: 0.8;
+    margin-top: 0;
+    font-weight: normal;
+    line-height: 1;
+}
+
+/* Button-specific colors */
+.goal {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+}
+
+.victory {
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    color: white;
+    box-shadow: 0 8px 25px rgba(241, 196, 15, 0.3);
+}
+
+.penalty {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+}
+
+.save {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+.yellow-card {
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    color: #2c3e50;
+}
+
+.red-card {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.two-minutes {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+}
+
+.timeout {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    color: white;
+}
+
+.entrance {
+    background: linear-gradient(135deg, #1abc9c, #16a085);
+    color: white;
+}
+
+.whistle {
+    background: linear-gradient(135deg, #1abc9c, #16a085);
+    color: white;
+}
+
+footer {
+    text-align: center;
+    color: #7f8c8d;
+    font-style: italic;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+
+
+/* iPhone und Mobile Optimierungen */
+@media (max-width: 768px) {
+    body {
+        padding: env(safe-area-inset-top, 5px) env(safe-area-inset-right, 5px) env(safe-area-inset-bottom, 5px) env(safe-area-inset-left, 5px);
+    }
+
+    .container {
+        padding: 12px;
+        margin: 0;
+        width: 100vw;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        border-radius: 0;
+    }
+
+    .title-container {
+        flex-direction: row;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+
+    .logo {
+        height: 40px;
+    }
+
+    .title {
+        font-size: clamp(1.2rem, 5vw, 1.8rem);
+    }
+
+    .controls {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+    }
+
+    .volume-control {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-width: auto;
+        order: 1;
+        gap: 10px;
+    }
+
+    /* Button-Container für bessere Anordnung */
+    .button-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        order: 2;
+        width: 100%;
+    }
+
+    .stop-btn,
+    .manage-btn {
+        flex: 1;
+        padding: 8px 10px;
+        font-size: 0.8rem;
+        border-radius: 18px;
+        min-height: 44px;
+        white-space: nowrap;
+    }
+
+    .debug-btn,
+    .help-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        flex-shrink: 0;
+        font-size: 0.9rem;
+        border-radius: 50%;
+    }
+
+    .manage-btn {
+        margin-left: 0;
+    }
+
+    .soundboard {
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .game-actions-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .penalties-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .tor-main {
+        width: 100%;
+        max-width: 200px;
+        margin: 0 auto;
+        min-height: 90px;
+        padding: 12px 8px;
+    }
+
+    .top-row {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding-top: 0;
+    }
+
+    .status-display {
+        position: static;
+        transform: none;
+        width: 100%;
+        max-width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 6px 10px;
+        margin: 0 auto 6px auto;
+        border-radius: 8px;
+        font-size: 0.8rem;
+    }
+
+    .status-left,
+    .status-right {
+        position: static;
+        width: auto;
+        margin: 0;
+    }
+
+    .status-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 2px;
+    }
+
+    .status-label {
+        font-size: 0.7rem;
+    }
+
+    .status-value {
+        text-align: center;
+        max-width: none;
+        font-size: 0.8rem;
+    }
+
+    .sound-btn {
+        padding: 10px 6px;
+        min-height: 70px;
+        border-radius: 12px;
+        gap: 4px;
+    }
+
+    .icon {
+        font-size: clamp(1.4rem, 4vw, 1.6rem);
+        line-height: 1;
+    }
+
+    .text {
+        font-size: clamp(0.65rem, 2.8vw, 0.75rem);
+        line-height: 1.1;
+    }
+
+    .file-count {
+        font-size: clamp(0.55rem, 2.2vw, 0.65rem);
+        line-height: 1;
+    }
+
+    .copyright-footer {
+        padding: 6px 10px;
+        margin-top: 5px;
+    }
+
+    .copyright-footer p {
+        font-size: 0.7rem;
+    }
+}
+
+/* Sehr kleine Bildschirme (iPhone SE, etc.) */
+@media (max-width: 375px) {
+    .container {
+        padding: 8px;
+    }
+
+    .controls {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .button-row {
+        gap: 6px;
+    }
+
+    .stop-btn,
+    .manage-btn {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+    }
+
+    .debug-btn,
+    .help-btn {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        font-size: 0.8rem;
+    }
+
+    .game-actions-row,
+    .penalties-row {
+        gap: 6px;
+    }
+
+    .sound-btn {
+        padding: 8px 4px;
+        min-height: 65px;
+        gap: 3px;
+    }
+
+    .tor-main {
+        min-height: 80px;
+        max-width: 150px;
+        padding: 10px 6px;
+    }
+
+    .icon {
+        font-size: clamp(1.2rem, 3.5vw, 1.4rem);
+    }
+
+    .text {
+        font-size: clamp(0.6rem, 2.5vw, 0.7rem);
+    }
+
+    .file-count {
+        font-size: clamp(0.5rem, 2vw, 0.6rem);
+    }
+}
+
+/* Landscape Modus für Handys */
+@media (max-width: 768px) and (orientation: landscape) {
+    .container {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+    }
+
+    .soundboard {
+        gap: 8px;
+    }
+
+    .sound-btn {
+        min-height: 60px;
+        padding: 8px 6px;
+    }
+
+    .tor-main {
+        min-height: 80px;
+    }
+
+    .top-row {
+        gap: 8px;
+    }
+}
+
+/* Modal
+ Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal.show {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.5rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #7f8c8d;
+    transition: color 0.3s ease;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.close-btn:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.modal-body {
+    padding: 30px;
+}
+
+.sound-selector {
+    margin-bottom: 25px;
+}
+
+.sound-selector label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+#sound-type-select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+#sound-type-select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.file-upload-area {
+    margin-bottom: 25px;
+}
+
+.upload-zone {
+    border: 3px dashed #ddd;
+    border-radius: 15px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+}
+
+.upload-zone:hover {
+    border-color: #3498db;
+    background: rgba(52, 152, 219, 0.05);
+}
+
+.upload-zone.dragover {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.upload-zone p {
+    margin: 10px 0;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.upload-zone small {
+    color: #7f8c8d;
+}
+
+.current-files h3 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.file-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.no-files {
+    color: #7f8c8d;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.file-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.file-name {
+    font-weight: 500;
+    color: #2c3e50;
+    flex: 1;
+    margin-right: 15px;
+    word-break: break-word;
+}
+
+.file-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.play-file-btn,
+.remove-file-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.play-file-btn {
+    color: #2ecc71;
+}
+
+.play-file-btn:hover {
+    background: rgba(46, 204, 113, 0.1);
+    transform: scale(1.1);
+}
+
+.remove-file-btn {
+    color: #e74c3c;
+}
+
+.remove-file-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+    transform: scale(1.1);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 30px;
+    border-top: 1px solid #eee;
+    gap: 15px;
+}
+
+.test-btn,
+.stop-modal-btn,
+.clear-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.test-btn {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+
+.test-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.stop-modal-btn {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+}
+
+.stop-modal-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+}
+
+.clear-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.clear-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .upload-zone {
+        padding: 30px 15px;
+    }
+
+    .upload-icon {
+        font-size: 2.5rem;
+    }
+}
+
+/* Copy
+right Footer */
+.copyright-footer {
+    margin-top: auto;
+    padding: 10px 20px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0 0 20px 20px;
+    position: relative;
+    z-index: 0;
+}
+
+.copyright-footer p {
+    margin: 0;
+    font-size: clamp(0.8rem, 1vw, 0.9rem);
+    color: rgba(0, 0, 0, 0.6);
+    font-weight: 400;
+}
+
+.copyright-footer strong {
+    color: rgba(0, 0, 0, 0.8);
+    font-weight: 600;
+}
+
+/* Zusätzliche Copyright Responsive Styles */
+@media (max-width: 768px) {
+    .copyright-footer {
+        padding: 8px 15px;
+    }
+
+    .copyright-footer p {
+        font-size: 0.75rem;
+    }
+}
+
+/* 
+Help Button */
+.help-btn {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.debug-btn {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.help-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+}
+
+.help-btn:active {
+    transform: translateY(0) scale(1);
+}
+
+/* Help Modal Content */
+.help-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0 5px;
+}
+
+.help-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #3498db;
+}
+
+.help-section h3 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.help-section ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.help-section li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+    color: #34495e;
+}
+
+.help-section li strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* Responsive help button */
+@media (max-width: 768px) {
+    .help-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+
+    .help-content {
+        max-height: 50vh;
+    }
+
+    .help-section {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+}
+
+/* iPhone spezifische Optimierungen */
+@supports (-webkit-touch-callout: none) {
+
+    /* iPhone Safari spezifische Styles */
+    .container {
+        min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+
+    body {
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+}
+
+/* Verhindere Zoom bei Input-Focus auf iPhone */
+@media screen and (max-width: 768px) {
+    input[type="range"] {
+        font-size: 16px;
+    }
+
+    select {
+        font-size: 16px;
+    }
+}
+
+/* Zusätzliche iPhone Touch-Optimierungen */
+@media (max-width: 768px) {
+
+    /* Touch-Targets */
+    .sound-btn {
+        min-height: max(44px, 75px);
+        /* Apple's empfohlene Mindestgröße */
+        min-width: 44px;
+    }
+
+    .stop-btn,
+    .manage-btn {
+        min-height: 44px;
+        padding: 12px 16px;
+    }
+
+    .help-btn {
+        min-height: 44px;
+        min-width: 44px;
+        width: 44px;
+        height: 44px;
+    }
+
+    /* iPhone Notch Optimierung */
+    .container {
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+    }
+}
+
+/* Verhindere Overscroll auf iPhone */
+body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.soundboard {
+    overscroll-behavior: contain;
+}/* D
+ebug Modal Styles */
+.debug-section {
+    margin-bottom: 20px;
+}
+
+.debug-section h3 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.debug-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.debug-test-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+.debug-test-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+.debug-test-btn:active {
+    transform: translateY(0);
+}
+
+.debug-logs {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: #495057;
+}
+
+.debug-logs:empty::before {
+    content: 'Keine Debug-Logs verfügbar. Klicken Sie auf einen Test-Button.';
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Mobile Debug Styles */
+@media (max-width: 768px) {
+    .debug-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+    
+    .debug-buttons {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .debug-test-btn {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .debug-logs {
+        max-height: 150px;
+        font-size: 0.75rem;
+    }
+}
